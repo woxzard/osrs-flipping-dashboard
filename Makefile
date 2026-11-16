@@ -6,10 +6,11 @@
 #   make setup      install dependencies (CI runs this first)
 #   make check      lint + format check + unit tests (required)
 #   make build      production build of the page (required)
-#   make e2e        end-to-end checks on saved samples (filled in by the foundation batch)
+#   make e2e        end-to-end checks on saved samples (run make build first)
+#   make samples    refresh the saved price-API responses in samples/
 #   make dev        run the page locally
 
-.PHONY: setup check build e2e dev todo
+.PHONY: setup check build e2e samples dev
 
 setup:
 	npm ci
@@ -25,8 +26,10 @@ build:
 dev:
 	npm run dev
 
-e2e: todo
+e2e:
+	npm run e2e
 
-todo:
-	@echo "This make target isn't filled in yet: see the comments at the top of the Makefile." >&2
-	@exit 1
+# Needs to reach prices.runescape.wiki (e2e-check skill). Node only uses the
+# cloud session's proxy when told to.
+samples:
+	NODE_USE_ENV_PROXY=1 npm run samples

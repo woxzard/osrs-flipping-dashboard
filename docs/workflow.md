@@ -53,7 +53,7 @@ PRs into `main` (release and urgent fixes) are merged by the owner, which is the
 
 | Workflow | When | What |
 |---|---|---|
-| `ci.yml` (check **checks**) | Every PR | `make setup`, `make check`, `make build`, then `make e2e` once the foundation batch has added it. |
+| `ci.yml` (check **checks**) | Every PR | `make setup`, `make check`, `make build`, then `make e2e`. |
 | `risk-gate.yml` (check **risk-gate**) | PRs into `next` | The rules above. Also creates the labels. |
 | `merge-when-green.yml` | After the checks finish | Merges a PR into `next` (squash) when **checks** and **risk-gate** are both green on its newest commit, unless it's a draft or has the `hold` label. Works on any GitHub plan (GitHub's own auto-merge needs branch protection, which private repos only get on paid plans). |
 | `next-branch.yml` | Something lands on `main` | Creates `next` from `main` if it doesn't exist; warns if `main` has a fix that `next` doesn't. |
@@ -68,7 +68,7 @@ PRs into `main` (release and urgent fixes) are merged by the owner, which is the
 
 ## End-to-end checks (for Claude)
 
-- The foundation batch adds `make e2e`: the page on a simulated iPhone against saved sample data, and (from the data job batch) a sample run of the job compared with a saved expected result.
+- `make e2e`: the page on a simulated iPhone against saved sample data, and (from the data job batch) a sample run of the job compared with a saved expected result.
 - Nothing in tests or checks calls the live price site: use `samples/`.
 - Keep these tools in the repo. Anything a session builds twice belongs in the repo.
 - How-tos and quirks go in the `e2e-check` skill (`.claude/skills/e2e-check/SKILL.md`), loaded only when needed.

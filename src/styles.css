@@ -56,20 +56,68 @@ body {
   color: var(--muted);
 }
 
-.empty {
-  margin-top: 1.5rem;
-  padding: 1rem;
+.card,
+.list li {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   overflow-wrap: anywhere;
 }
 
-.empty h2 {
+.card {
+  margin-top: 1.5rem;
+  padding: 1rem;
+}
+
+.card h2 {
   margin: 0 0 0.25rem;
   font-size: 1.125rem;
 }
 
-.empty p {
+.card p {
   margin: 0;
+}
+
+.button {
+  min-height: 2.75rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--text);
+  border: 0;
+  border-radius: 0.5rem;
+  touch-action: manipulation;
+}
+
+.button:active {
+  opacity: 0.7;
+}
+
+.list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Nothing for the first 300 ms (no flash on a fast load), then placeholders. */
+.skeleton {
+  opacity: 0;
+  animation: appear 0s 0.3s forwards;
+}
+
+@keyframes appear {
+  to {
+    opacity: 0.6;
+  }
 }
