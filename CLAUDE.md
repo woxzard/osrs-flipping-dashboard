@@ -19,7 +19,7 @@
 Full details and build order live in `docs/spec.md`. If the spec and this file disagree, ask me.
 
 ## Tech stack
-- **TypeScript** everywhere, one npm package, Node 22. Page: Vite + React in `src/`. Data job: `job/`. Scoring, tax and settings used by both: `shared/` (rules and their tests exist once).
+- **TypeScript** everywhere (6.x until the lint tools support 7), one npm package, Node 22. Page: Vite + React in `src/`. Data job: `job/`. Scoring, tax and settings used by both: `shared/` (rules and their tests exist once).
 - **Hosting:** Vercel, static. **Hourly job:** GitHub Actions schedule; it overwrites one results file on the `data` branch, which the page reads directly (a refresh never triggers a deploy).
 - **Data source:** OSRS Wiki real-time prices API. Always send the project's User-Agent (`docs/spec.md` §4); space requests out.
 - **Tests:** Vitest for unit tests; Playwright (simulated iPhone) for end-to-end, pinned to the cloud sessions' version (1.63.0). Tests and checks use the saved samples in `samples/`, never the live site.
