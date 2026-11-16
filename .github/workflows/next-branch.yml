@@ -1,0 +1,45 @@
+# Keeps the `next` branch available (docs/workflow.md):
+# - creates `next` from main if it doesn't exist yet (first run after the
+#   workflow v2 PR is merged);
+# - otherwise, warns when main has changes that next doesn't (e.g. an urgent
+#   fix made straight to main), so Claude opens a main → next PR.
+name: Next branch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  next-branch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create or compare next
+        run: |
+          if ! git ls-remote --exit-code --heads origin next >/dev/null; then
+            git push origin HEAD:refs/heads/next
+            echo "Created \`next\` from main." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git fetch origin next
+          # Changes made on main since it last shared history with next. Empty
+          # after a release (its merge commit adds nothing new) and while next
+          # is simply ahead; not empty after a fix made straight to main.
+          base=$(git merge-base origin/next HEAD)
+          if git diff --quiet "$base" HEAD; then
+            echo "\`next\` has everything on main." >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### main has changes that next doesn't"
+              echo "Usually an urgent fix made straight to main."
+              echo "Claude should open a PR from main into next."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -1,0 +1,23 @@
+# High-risk paths for the risk gate (.github/workflows/risk-gate.yml).
+# One regular expression per line, matched against changed file paths.
+# A PR into `next` touching any of these waits for the owner's owner-ok label.
+# Lines starting with # are ignored.
+# The gate always reads this file from `next`, so a PR can't loosen its own check.
+
+# GitHub automation (includes the hourly data workflow) and these rules
+^\.github/
+
+# The hourly data job: what it fetches from the Wiki and what it publishes
+^job/
+
+# Dependencies
+(^|/)(package\.json|package-lock\.json)$
+
+# Build, deploy and environment settings
+^Makefile$
+^vercel\.json$
+^vite\.config\.
+^\.env\.example$
+
+# Export/backup of my own data (the flip log, later)
+(^|/)(backup|export)

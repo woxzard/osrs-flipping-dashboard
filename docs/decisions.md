@@ -1,0 +1,30 @@
+# Decisions
+
+- **Standing decisions** are the short version of what still applies. Read these first; keep them short.
+- **Log** holds new decisions, newest at the bottom: one short table per batch, not per PR. When the log gets long, move it to `docs/archive/` and fold what still matters into the standing decisions.
+
+## Standing decisions
+
+| Decision | Why |
+|---|---|
+| Work in batches into `next`; safe PRs merge themselves; the owner tests and ships (`docs/workflow.md`) | The owner decides and tests instead of reviewing and merging every PR. |
+| TypeScript for both the data job and the page (Vite + React), one npm package | The scoring and tax rules and their tests exist once, and the page can reuse them to size picks for my cash. Alternative was a Python job + plain HTML page: fewer tools, but the rules would live in two languages. |
+| Vercel hosts the page | Already used for Plateful; a preview link per branch and a fixed address for `next`; ₱0. Alternative was GitHub Pages: no extra account, but no preview links without extra plumbing. |
+| The hourly job runs on GitHub Actions and overwrites its results on a separate `data` branch; the page reads them from GitHub | ₱0; an hourly refresh never triggers a deploy; the `next` preview shows the same live data as the released page; history doesn't pile up. |
+| No database; my settings stay in the phone's browser storage | Market data is rebuilt every hour; one user, one phone. |
+| The repo is public | Makes free hosting, reading the results file from the page, and protecting `main` possible. Nothing in it is secret. |
+| Tests and end-to-end checks use saved samples in `samples/`, never the live price site | Repeatable, polite to the Wiki, and works where the site is blocked. |
+| The User-Agent names the tool and the public repo, not an email | The Wiki requires a contact; the repo's issues are enough and no email is exposed. |
+| Playwright stays pinned to the cloud sessions' version (1.63.0) | Cloud sessions can't download another browser. |
+
+## Log
+
+### 2026-11-16 – Setup
+| Decision | Why |
+|---|---|
+| Default windows: buy 22:00–07:00, sell 07:00–22:00 Manila | Owner's sleep hours. |
+| "Cash to spend" is split evenly across the free slots | One slot covers "a sell just finished"; eight covers the evening setup. |
+| Cloud sessions reach `prices.runescape.wiki` through a personal environment named `osrs-flipping-dashboard` | Makes capturing and refreshing samples easy without widening the Default environment used by other projects. |
+| The job publishes per-item numbers; the page works out quantity, profit and rank | Those depend on the cash and slots chosen on the phone. |
+| Each item's 14-day history is a separate small file, loaded when the item is opened | Keeps the first load small on a phone. |
+| No database workflow or `local-db` / `migrate` targets | No database. |

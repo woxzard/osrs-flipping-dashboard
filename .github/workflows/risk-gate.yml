@@ -1,0 +1,91 @@
+# Risk gate (docs/workflow.md → "Risk levels"). For PRs into `next`:
+# - every PR needs a risk:low / risk:medium / risk:high label;
+# - a PR that touches high-risk files, or is labelled risk:high, fails until
+#   the owner adds the owner-ok label.
+# PRs into main are merged by the owner, which is the approval, so they pass.
+# The job name "risk-gate" is a required status check on `next`.
+name: Risk gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+
+concurrency:
+  group: risk-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write # create the labels
+  issues: write
+
+jobs:
+  risk-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      BASE: ${{ github.event.pull_request.base.ref }}
+      AUTHOR: ${{ github.event.pull_request.user.login }}
+      LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+    steps:
+      - name: Make sure the labels exist
+        continue-on-error: true
+        run: |
+          gh label create "risk:low" --color 0e8a16 --description "Merges itself when checks pass" --force
+          gh label create "risk:medium" --color fbca04 --description "Approved behaviour; merges itself when checks pass" --force
+          gh label create "risk:high" --color b60205 --description "Waits for the owner's owner-ok label" --force
+          gh label create "owner-ok" --color 0f6b6b --description "Owner approves this high-risk PR" --force
+          gh label create "release" --color 5319e7 --description "next → main, merged by the owner" --force
+          gh label create "hold" --color d93f0b --description "Don't merge this PR by itself" --force
+
+      - name: Check
+        run: |
+          if [[ "$BASE" != "next" ]]; then
+            echo "PR into $BASE: merged by the owner, nothing to check." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          has() { [[ ",$LABELS," == *",$1,"* ]]; }
+
+          # High-risk paths: one regex per line in .github/risk-paths.txt,
+          # read from the base branch so a PR can't loosen its own check.
+          patterns=$(gh api "repos/$GH_REPO/contents/.github/risk-paths.txt?ref=$BASE" --jq .content 2>/dev/null | base64 -d 2>/dev/null \
+            | grep -vE '^\s*(#|$)' || true)
+          [[ -z "$patterns" ]] && patterns='^\.github/'
+          files=$(gh pr diff "$PR" --name-only)
+          risky=$(printf '%s\n' "$files" | grep -E -f <(printf '%s\n' "$patterns") || true)
+
+          # Dependabot's grouped minor/patch updates are low risk by design
+          # (majors are ignored in .github/dependabot.yml).
+          if [[ "$AUTHOR" == "dependabot[bot]" ]]; then
+            echo "Dependabot PR: dependency files are allowed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if ! has "risk:low" && ! has "risk:medium" && ! has "risk:high"; then
+            echo "::error::Add a risk label: risk:low, risk:medium or risk:high (docs/workflow.md)."
+            exit 1
+          fi
+
+          if [[ -n "$risky" ]] || has "risk:high"; then
+            if has "owner-ok"; then
+              echo "High risk, approved by the owner (owner-ok)." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            {
+              echo "### Waiting for the owner"
+              echo "This PR is high risk. To approve it, add the **owner-ok** label."
+              if [[ -n "$risky" ]]; then
+                echo ""
+                echo "High-risk files:"
+                printf '%s\n' "$risky" | sed 's/^/- `/; s/$/`/'
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::High-risk PR: waiting for the owner's owner-ok label."
+            exit 1
+          fi
+
+          echo "Low/medium risk: merges itself when the checks pass." >> "$GITHUB_STEP_SUMMARY"

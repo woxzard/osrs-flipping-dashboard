@@ -1,0 +1,63 @@
+# Merges a PR into `next` once both required checks are green
+# (docs/workflow.md). Works on any GitHub plan: it doesn't need branch
+# protection or GitHub's auto-merge setting.
+#
+# A PR merges when: its base is `next`, it's open and not a draft, it has no
+# `hold` label, and the latest "checks" (CI) and "risk-gate" runs on its
+# newest commit both succeeded. The risk gate already holds high-risk PRs
+# until the owner adds `owner-ok`. To stop a PR from merging, add `hold`.
+name: Merge when green
+
+on:
+  workflow_run:
+    workflows: [CI, Risk gate]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  merge:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - name: Merge if everything is green
+        run: |
+          # Only PRs from this repository (not forks), at exactly this commit.
+          pr=$(gh pr list --base next --state open --head "$HEAD_BRANCH" \
+            --json number,headRefOid,isCrossRepository \
+            --jq ".[] | select(.headRefOid == \"$SHA\" and (.isCrossRepository | not)) | .number" | head -n1)
+          if [[ -z "$pr" ]]; then
+            echo "No open PR into next for $HEAD_BRANCH at $SHA (newer commit, other base, or closed)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          info=$(gh pr view "$pr" --json isDraft,labels)
+          if [[ "$(jq -r .isDraft <<<"$info")" == "true" ]]; then
+            echo "PR #$pr is a draft: not merging." >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          if jq -e '.labels[] | select(.name == "hold")' <<<"$info" >/dev/null; then
+            echo "PR #$pr has the hold label: not merging." >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+
+          latest() {
+            gh api "repos/$GH_REPO/commits/$SHA/check-runs?check_name=$1&per_page=100" \
+              --jq '[.check_runs[]] | sort_by(.id) | last | "\(.status)/\(.conclusion)"'
+          }
+          ci=$(latest checks)
+          gate=$(latest risk-gate)
+          echo "PR #$pr: checks=$ci, risk-gate=$gate" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$ci" != "completed/success" || "$gate" != "completed/success" ]]; then
+            echo "Not both green yet: waiting." >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+
+          gh pr merge "$pr" --squash --match-head-commit "$SHA"
+          echo "Merged PR #$pr into next." >> "$GITHUB_STEP_SUMMARY"
