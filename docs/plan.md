@@ -6,14 +6,13 @@ What's next, in order, as batches (`docs/workflow.md`). Finished work is one lin
 - **Setup** (2026-11-16, one PR into `main`): template copied in, project profile, spec, stack choice, Makefile / CI / Dependabot / risk paths, owner's steps in `TODO-PC.md`.
 
 ## Next: Foundation
-Goal: make the project runnable and checkable before any features, so every later PR is checked automatically. The detailed batch plan (PRs, acceptance criteria, risk levels, open questions) comes first, for the owner's OK.
+Goal: make the project runnable and checkable before any features, so every later PR is checked automatically and `next` opens on the owner's phone. Plan approved 2026-11-16; the owner pre-approved `owner-ok` for these three PRs.
 
-Expected contents:
-- Page skeleton (Vite + React + TypeScript) that `make setup / check / build / dev` work on, with lint, format and a first unit test. New libraries, so `risk:high`.
-- Vercel: preview link for `next` at a fixed address; `data` branch not deployed. `risk:high` (deploy settings). Needs `TODO-PC.md` step 2.
-- Saved API samples in `samples/` (mapping, latest, 24h, a handful of item histories), captured with the project's User-Agent.
-- First `make e2e`: the skeleton page on a simulated iPhone against the saved samples; Playwright pinned to 1.63.0.
-- Fill in the `e2e-check` skill.
+1. **Page skeleton and tools** (`risk:high`: new libraries). A bare page (title, "No picks yet", phone layout, dark mode); `make setup / check / build / dev` work, with lint, format check and a first unit test. Done when the **checks** run is green.
+2. **Saved samples and the first end-to-end check** (`risk:high`: Makefile, the Wiki client). Real API responses in `samples/` (item list, latest and 24-hour data trimmed to about 300 items; hourly history for about 8 items, including a thin one and a bond); a command to refresh them politely; `make e2e`: the page on a simulated iPhone loads a small sample results file and shows the update time and item names; `e2e-check` skill filled in. Done when `make e2e` passes here and on GitHub.
+3. **Vercel preview** (`risk:high`: deploy settings). Vercel builds `main` and `next`, never `data`; the fixed `next` address goes in `docs/status.md`. Needs `TODO-PC.md` step 4. Done when the owner sees the skeleton at the `next` address on their phone.
+
+Then the release PR `next` → `main`.
 
 ## Later
 1. **Data job:** fetch, choose candidates, score, tax, write the results to the `data` branch; the hourly schedule; unit tests on the tax and scoring maths; a sample-run check. Check the tax rules against the Wiki. Decide how window settings work (spec assumption 3).

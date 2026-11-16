@@ -8,9 +8,6 @@
 #   make build      production build of the page (required)
 #   make e2e        end-to-end checks on saved samples (filled in by the foundation batch)
 #   make dev        run the page locally
-#
-# The npm scripts these call (lint, format:check, test, build, dev) arrive
-# with package.json in the foundation batch.
 
 .PHONY: setup check build e2e dev todo
 

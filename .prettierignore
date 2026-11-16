@@ -1,0 +1,10 @@
+dist
+coverage
+package-lock.json
+samples
+test-results
+playwright-report
+# Copied from the knowledge repo: keep identical to the master copy
+.claude
+.github
+*.md
