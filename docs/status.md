@@ -5,18 +5,23 @@ Read this at the start of every session. Updated at the end of each batch and ea
 _Last updated: 2026-11-16._
 
 ## Where we are
-- Setup batch released to `main`. Nothing live yet.
-- Foundation batch in progress on `next`: all three PRs merged (page skeleton and tools; saved samples and first end-to-end check; Vercel settings). The page shows "No picks yet" until the data job exists.
-- **Preview address for `next`:** not known yet. It exists once the owner has imported the repo in Vercel (`TODO-PC.md` step 4); record it here.
-- The price API was checked live: the four endpoints in `docs/spec.md` §4 work as assumed.
+- **Released on `main`:** setup and foundation batches. The page shows "No picks yet" until the data job exists. `next` has nothing beyond `main` except doc updates.
+- The repo is public. The price API was checked live: the four endpoints in `docs/spec.md` §4 work as assumed.
+- **Vercel:** `vercel.json` is in place but has not met a real Vercel build. The preview address for `next` is not known yet: it exists once the owner has imported the repo (`TODO-PC.md` step 4). Record it here.
+- The owner pre-approved `owner-ok` for the three foundation PRs only. Later high-risk PRs wait for the owner again.
 
 ## Next up
-- Owner: import the repo in Vercel, then test and merge the foundation release PR (`next` → `main`).
-- Then the **data job batch** (`docs/plan.md`), starting with a batch plan.
+- **Data job batch** (`docs/plan.md`). The plan was sent but is **not approved yet**: get the owner's OK and the answers below first.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site.
 
 ## Open questions for the owner
-- For the data job batch: **should window hours be changeable on the phone in v1?** Recommendation: not yet. Keep 22:00–07:00 / 07:00–22:00 in the repo's settings file (a change is a quick request to Claude) and add the phone setting in the Personal batch, once we know how heavy redoing the scoring on the phone is.
+1. **Should window hours be changeable on the phone in v1?** Recommendation: not yet. Keep 22:00–07:00 / 07:00–22:00 in the settings file and revisit in the Personal batch; changing them on the phone means the phone must redo the scoring from the raw history.
+2. **How many items get a history request each hour?** Recommendation: a cap of 300, from the most-traded items that have a buy limit and both prices (about 300 requests an hour, spaced out over a little more than a minute).
+3. **May Claude check the tax rules on the Wiki's own page?** That needs `oldschool.runescape.wiki` added to the `osrs-flipping-dashboard` cloud environment (the owner gets an approval prompt). Recommendation: yes; the tax rules in spec §5 are still unverified. Without it, build on the spec's numbers and flag them as unchecked.
+4. **The Vercel `next` address** (the one containing `-git-next-`), or the build error if the first build failed.
+
+## Good to know
+- If a PR's risk-gate run hangs "in progress" after labels are added, two runs are waiting on each other: cancel the stuck run and edit the PR description to start a fresh one. Adding the labels in one step right when the PR opens seems to trigger it.
 
 ## Owner's to-dos
 See `TODO-PC.md`.

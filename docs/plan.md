@@ -4,21 +4,23 @@ What's next, in order, as batches (`docs/workflow.md`). Finished work is one lin
 
 ## Done
 - **Setup** (2026-11-16, one PR into `main`): template copied in, project profile, spec, stack choice, Makefile / CI / Dependabot / risk paths, owner's steps in `TODO-PC.md`.
+- **Foundation** (2026-11-16, PRs #2–#4, release #5): page skeleton and tools; saved API samples and the first end-to-end check on a simulated iPhone; Vercel settings.
 
-## Next: Foundation
-Goal: make the project runnable and checkable before any features, so every later PR is checked automatically and `next` opens on the owner's phone. Plan approved 2026-11-16; the owner pre-approved `owner-ok` for these three PRs.
+## Next: Data job
+Goal: every hour, GitHub fetches prices, scores the flips as in `docs/spec.md` §5, and publishes the results to the `data` branch. The page keeps showing item names only; the full list and controls come in the dashboard batch.
 
-1. **Page skeleton and tools** (`risk:high`: new libraries). A bare page (title, "No picks yet", phone layout, dark mode); `make setup / check / build / dev` work, with lint, format check and a first unit test. Done when the **checks** run is green.
-2. **Saved samples and the first end-to-end check** (`risk:high`: Makefile, the Wiki client). Real API responses in `samples/` (item list, latest and 24-hour data trimmed to about 300 items; hourly history for about 8 items, including a thin one and a bond); a command to refresh them politely; `make e2e`: the page on a simulated iPhone loads a small sample results file and shows the update time and item names; `e2e-check` skill filled in. Done when `make e2e` passes here and on GitHub.
-3. **Vercel preview** (`risk:high`: deploy settings). Vercel builds `main` and `next`, never `data`; the fixed `next` address goes in `docs/status.md`. Needs `TODO-PC.md` step 4. Done when the owner sees the skeleton at the `next` address on their phone.
+**Plan sent to the owner on 2026-11-16, not yet approved.** Get the owner's OK and their answers to the questions in `docs/status.md` before building.
+
+1. **Scoring rules** (`risk:medium`). The rules from spec §5 in `shared/`: night and day windows in Manila time, the 70% buy and sell levels, tax, profit, quantity, fill chance, trend and warning flags, rank. All starting values in one settings file. Unit tests on the saved samples, including tax edge cases (under 50 gp, the 5m cap, bonds), hours with no trades, and items with under 14 days of history. Done when the tests pass and a scored whip, bond and 3rd age amulet from the samples look sensible in the PR notes.
+2. **The job** (`risk:high`: `job/`). Fetches the item list, latest prices and 24-hour data, narrows to candidates, fetches hourly history only for those, scores them, and writes `picks.json` plus one small history file per item. If the Wiki fails or returns nonsense, it publishes nothing and the run fails, so the last good results stay. A sample run on the saved responses is compared with a saved expected result, as part of `make e2e`. Done when that check passes here and on GitHub, and one real run from a cloud session produces a believable file.
+3. **The hourly schedule** (`risk:high`: GitHub workflow). Runs at 7 minutes past every hour and can be started by hand. Overwrites the `data` branch each run. GitHub only runs schedules and hand-started runs from `main`, so it can't be tried before the release is merged: run the job from a cloud session first. Done when, after the release, a hand-started run publishes the file and the released page lists real item names with a fresh update time.
 
 Then the release PR `next` → `main`.
 
 ## Later
-1. **Data job:** fetch, choose candidates, score, tax, write the results to the `data` branch; the hourly schedule; unit tests on the tax and scoring maths; a sample-run check. Check the tax rules against the Wiki. Decide how window settings work (spec assumption 3).
-2. **Dashboard:** controls, picks list, item detail, freshness, all the loading / empty / error states. Propose the High/Low volume cut-off from real data.
-3. **Personal:** "I'm flipping this" with undo, My flips, watchlist, blocklist, window settings.
-4. **After v1:** flip log with export; backtest to tune the scoring; phone notification for watched items.
+1. **Dashboard:** controls, picks list, item detail, freshness, all the loading / empty / error states. Propose the High/Low volume cut-off from real data.
+2. **Personal:** "I'm flipping this" with undo, My flips, watchlist, blocklist, window settings.
+3. **After v1:** flip log with export; backtest to tune the scoring; phone notification for watched items.
 
 ## On hold
 - Nothing.
