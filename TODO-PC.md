@@ -6,7 +6,7 @@ These involve accounts or settings, so Claude can't do them. All can be done in 
 - [x] 1. Create the GitHub repo.
 - [x] 2. **Make the repo public:** GitHub → the repo → Settings → General → scroll to "Danger Zone" → Change visibility → Public. Needed before the dashboard can read its data and for the free branch protection below. Nothing in the repo is secret.
 - [x] 3. Merge the setup PR into `main`. GitHub then creates the `next` branch by itself (Actions → "Next branch").
-- [ ] 4. **Vercel** (ready now): vercel.com → Add New → Project → import `osrs-flipping-dashboard` → Deploy. Keep every default; the repo's `vercel.json` sets the rest. The first build of `main` fails until the foundation release is merged: that's expected. Then open the project → Deployments, find the one for branch `next`, and send Claude its address that contains `-git-next-`: that address never changes.
+- [x] 4. **Vercel** (done; confirm the `next` address in `docs/status.md` opens): vercel.com → Add New → Project → import `osrs-flipping-dashboard` → Deploy. Keep every default; the repo's `vercel.json` sets the rest. The first build of `main` fails until the foundation release is merged: that's expected. Then open the project → Deployments, find the one for branch `next`, and send Claude its address that contains `-git-next-`: that address never changes.
 - [ ] 5. Optional: protect `main` (Settings → Rules → Rulesets → New branch ruleset: target `main`, require a pull request and the `checks` status check, block force pushes). Works once the repo is public.
 - [ ] 6. Optional tidy-up: delete the branch `claude/tender-tesla-bolrrb` (it only held the project brief, now replaced by `docs/spec.md`, `docs/plan.md` and `docs/decisions.md`).
 
