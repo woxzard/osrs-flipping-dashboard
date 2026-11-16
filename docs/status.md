@@ -6,11 +6,11 @@ _Last updated: 2026-11-16._
 
 ## Where we are
 - Setup batch released to `main`. Nothing live yet.
-- Foundation batch in progress on `next`: PR 1 (page skeleton and tools) done; next are PR 2 (samples and first end-to-end check) and PR 3 (Vercel preview).
+- Foundation batch in progress on `next`: PR 1 (page skeleton and tools) and PR 2 (saved samples, first end-to-end check) done; next is PR 3 (Vercel preview).
 - The price API was checked live: the four endpoints in `docs/spec.md` §4 work as assumed.
 
 ## Next up
-- **Foundation batch**, PRs 2 and 3 (`docs/plan.md`). The Vercel step waits on `TODO-PC.md` step 4.
+- **Foundation batch**, PR 3 (`docs/plan.md`). The Vercel step waits on `TODO-PC.md` step 4.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site.
 
 ## Open questions for the owner

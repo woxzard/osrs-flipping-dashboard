@@ -46,7 +46,8 @@ The same names in every project (`Makefile`); what they run depends on the stack
 - `make check` – lint, format check and unit tests
 - `make build` – production build or package
 - `make dev` – run locally
-- `make e2e` – end-to-end checks (from the foundation batch on)
+- `make e2e` – end-to-end checks on a simulated iPhone (after `make build`)
+- `make samples` – refresh the saved price-API responses (rarely; `e2e-check` skill)
 Run `make check`, `make build` and `make e2e` before opening a PR. GitHub runs the same on every PR.
 
 ## Secrets and safety
