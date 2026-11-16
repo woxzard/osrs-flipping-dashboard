@@ -11,8 +11,8 @@ const UNITS = [
  */
 export function formatGp(amount: number): string {
   if (!Number.isFinite(amount)) return '–';
-  const sign = amount < 0 ? '-' : '';
   const value = Math.trunc(Math.abs(amount));
+  const sign = amount < 0 && value > 0 ? '-' : '';
 
   for (const { size, suffix } of UNITS) {
     if (value < size) continue;

@@ -27,6 +27,7 @@ describe('formatGp', () => {
 
   it('handles losses and bad input', () => {
     expect(formatGp(-35_500)).toBe('-35.5k');
+    expect(formatGp(-0.4)).toBe('0');
     expect(formatGp(Number.NaN)).toBe('–');
   });
 });
