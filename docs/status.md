@@ -6,11 +6,13 @@ _Last updated: 2026-11-16._
 
 ## Where we are
 - Setup batch released to `main`. Nothing live yet.
-- Foundation batch in progress on `next`: PR 1 (page skeleton and tools) and PR 2 (saved samples, first end-to-end check) done; next is PR 3 (Vercel preview).
+- Foundation batch in progress on `next`: all three PRs merged (page skeleton and tools; saved samples and first end-to-end check; Vercel settings). The page shows "No picks yet" until the data job exists.
+- **Preview address for `next`:** not known yet. It exists once the owner has imported the repo in Vercel (`TODO-PC.md` step 4); record it here.
 - The price API was checked live: the four endpoints in `docs/spec.md` §4 work as assumed.
 
 ## Next up
-- **Foundation batch**, PR 3 (`docs/plan.md`). The Vercel step waits on `TODO-PC.md` step 4.
+- Owner: import the repo in Vercel, then test and merge the foundation release PR (`next` → `main`).
+- Then the **data job batch** (`docs/plan.md`), starting with a batch plan.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site.
 
 ## Open questions for the owner

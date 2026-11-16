@@ -40,3 +40,4 @@
 | Sample files keep the API's exact shape, trimmed to about 300 items picked by a fixed rule | Small enough for the repo, and a refresh picks the same items. |
 | The job runs its TypeScript directly with Node 22 | No extra library needed to run it. |
 | Requests to the Wiki go one at a time, 250 ms apart | Polite client; a few hundred history requests still finish in a couple of minutes. |
+| Vercel builds every branch except `data` and Dependabot's | `data` only holds results, and library-update PRs are covered by the checks. Claude's PR branches still get a preview. |
