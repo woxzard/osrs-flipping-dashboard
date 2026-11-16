@@ -19,7 +19,7 @@
 Full details and build order live in `docs/spec.md`. If the spec and this file disagree, ask me.
 
 ## Tech stack
-- **TypeScript** everywhere, one npm package, Node 22. Page: Vite + React in `src/`. Data job: `job/`. Scoring, tax and settings used by both: `shared/` (rules and their tests exist once).
+- **TypeScript** everywhere (6.x until the lint tools support 7), one npm package, Node 22. Page: Vite + React in `src/`. Data job: `job/`. Scoring, tax and settings used by both: `shared/` (rules and their tests exist once).
 - **Hosting:** Vercel, static. **Hourly job:** GitHub Actions schedule; it overwrites one results file on the `data` branch, which the page reads directly (a refresh never triggers a deploy).
 - **Data source:** OSRS Wiki real-time prices API. Always send the project's User-Agent (`docs/spec.md` §4); space requests out.
 - **Tests:** Vitest for unit tests; Playwright (simulated iPhone) for end-to-end, pinned to the cloud sessions' version (1.63.0). Tests and checks use the saved samples in `samples/`, never the live site.
@@ -46,7 +46,8 @@ The same names in every project (`Makefile`); what they run depends on the stack
 - `make check` – lint, format check and unit tests
 - `make build` – production build or package
 - `make dev` – run locally
-- `make e2e` – end-to-end checks (from the foundation batch on)
+- `make e2e` – end-to-end checks on a simulated iPhone (after `make build`)
+- `make samples` – refresh the saved price-API responses (rarely; `e2e-check` skill)
 Run `make check`, `make build` and `make e2e` before opening a PR. GitHub runs the same on every PR.
 
 ## Secrets and safety

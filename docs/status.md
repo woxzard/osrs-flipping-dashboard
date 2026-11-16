@@ -5,12 +5,14 @@ Read this at the start of every session. Updated at the end of each batch and ea
 _Last updated: 2026-11-16._
 
 ## Where we are
-- Setup batch done (one PR into `main`). No code yet, nothing live.
+- Setup batch released to `main`. Nothing live yet.
+- Foundation batch in progress on `next`: all three PRs merged (page skeleton and tools; saved samples and first end-to-end check; Vercel settings). The page shows "No picks yet" until the data job exists.
+- **Preview address for `next`:** not known yet. It exists once the owner has imported the repo in Vercel (`TODO-PC.md` step 4); record it here.
 - The price API was checked live: the four endpoints in `docs/spec.md` §4 work as assumed.
-- Until the foundation batch adds `package.json`, the **checks** run fails at `make setup`. That's expected.
 
 ## Next up
-- **Foundation batch** (`docs/plan.md`). Starts with a batch plan for the owner's OK. The Vercel step waits on `TODO-PC.md` step 2.
+- Owner: import the repo in Vercel, then test and merge the foundation release PR (`next` → `main`).
+- Then the **data job batch** (`docs/plan.md`), starting with a batch plan.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site.
 
 ## Open questions for the owner

@@ -28,3 +28,16 @@
 | The job publishes per-item numbers; the page works out quantity, profit and rank | Those depend on the cash and slots chosen on the phone. |
 | Each item's 14-day history is a separate small file, loaded when the item is opened | Keeps the first load small on a phone. |
 | No database workflow or `local-db` / `migrate` targets | No database. |
+
+### 2026-11-16 – Foundation
+| Decision | Why |
+|---|---|
+| Libraries: Vite 8, React 19, TypeScript, Vitest 5, ESLint 10 with typescript-eslint and the React hooks rules, Prettier, Playwright 1.63.0 | Approved by the owner in the batch plan. |
+| TypeScript 6.0, not 7 | The lint tool (typescript-eslint) doesn't support 7 yet. Moving up is a planned change, like any major update. |
+| gp amounts are cut off, not rounded (999,999 shows as "999k") | Cash or profit never reads as more than it is. |
+| Prettier leaves the Markdown docs and the files copied from the knowledge repo alone | Those stay identical to their master copies. |
+| The page treats a missing results file as "No picks yet", and any other failure as an error with "Try again" | Before the job's first run (or while the repo is private) there is simply nothing published. |
+| Sample files keep the API's exact shape, trimmed to about 300 items picked by a fixed rule | Small enough for the repo, and a refresh picks the same items. |
+| The job runs its TypeScript directly with Node 22 | No extra library needed to run it. |
+| Requests to the Wiki go one at a time, 250 ms apart | Polite client; a few hundred history requests still finish in a couple of minutes. |
+| Vercel builds every branch except `data` and Dependabot's | `data` only holds results, and library-update PRs are covered by the checks. Claude's PR branches still get a preview. |
