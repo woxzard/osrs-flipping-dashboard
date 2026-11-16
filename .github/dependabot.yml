@@ -1,0 +1,36 @@
+# Library updates (docs/workflow.md). Minor and patch updates come as one
+# grouped PR into `next`, labelled risk:low, and merge themselves when the
+# checks pass (merge-when-green.yml). Major updates are ignored: they need a
+# planned batch.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: next
+    schedule:
+      interval: monthly
+      timezone: Asia/Manila
+    labels: [dependencies, "risk:low"]
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    target-branch: next
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+      timezone: Asia/Manila
+    open-pull-requests-limit: 2
+    labels: [dependencies, "risk:low"]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Pinned to the version pre-installed in cloud sessions (e2e-check skill).
+      - dependency-name: "@playwright/test"
+      - dependency-name: "playwright"

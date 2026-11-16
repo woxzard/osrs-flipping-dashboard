@@ -1,0 +1,22 @@
+# Secrets: never commit real values (.env.example is the template)
+.env*
+!.env.example
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# End-to-end check output
+/test-results/
+/playwright-report/
+/e2e-report/
+
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+.vercel/
+*.tsbuildinfo
