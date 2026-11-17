@@ -82,3 +82,8 @@
 | Page checks use a copy of the first real published run (`samples/published/`) | The hand-written sample has names only. |
 | The page sizes picks with the settings the results file was scored with, over its own | Keeps `next` in step with the job on `main` when starting values differ. |
 | Left for later (code review): the page's item check repeats the job's number check (`job/build.ts`); sharing it means touching `job/` (`risk:high`) | Fold in with the next job change. |
+
+### 2026-11-17 – Hourly start
+| Decision | Why |
+|---|---|
+| The hourly job is started by cron-job.org (free) calling GitHub's "run workflow" API at :07, with a fine-grained key limited to Actions on this repo; GitHub's own schedule is removed | Owner's answer. GitHub's schedule never fired a single run in 9+ hours, also after rewriting it (#20). Keeping both could run the job twice an hour. The key only lets the service start, re-run or cancel this repo's workflows. |

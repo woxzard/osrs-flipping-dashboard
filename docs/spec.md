@@ -24,7 +24,7 @@ Recommendations are odds, not promises: past nights don't guarantee tonight, and
   - `shared/` – scoring, tax, formatting and the settings file, used by both, with unit tests. The rules exist once.
   - `samples/` – saved API responses for tests and end-to-end checks.
 - **Hosting:** Vercel. `main` is the released page; `next` has a preview at a fixed address.
-- **Hourly job:** a GitHub Actions schedule (runs from `main` only; can be started by hand). It writes the results to a separate **`data` branch**, overwriting the previous run so history doesn't pile up. The page reads those files directly from GitHub, so a refresh never triggers a deploy and the `next` preview shows the same live data as the released page. Vercel doesn't deploy the `data` branch.
+- **Hourly job:** a GitHub Actions workflow on `main`, started every hour by a free outside timer (cron-job.org) through GitHub's "run workflow" API, with a key that can only start this repo's workflows; it can also be started by hand. GitHub's own schedule never fired here (decisions, 2026-11-17). It writes the results to a separate **`data` branch**, overwriting the previous run so history doesn't pile up. The page reads those files directly from GitHub, so a refresh never triggers a deploy and the `next` preview shows the same live data as the released page. Vercel doesn't deploy the `data` branch.
 - **Nothing to protect:** no login, no secrets, no personal data on a server. My settings stay in the phone's browser storage.
 - **Tests:** Vitest for unit tests (tax and scoring maths especially); Playwright on a simulated iPhone against saved samples; the data job as a sample run compared with a saved expected result. Nothing in tests calls the live price site.
 
@@ -113,7 +113,7 @@ Icon + text, never colour alone:
 
 ### 7.6 Freshness
 - "Updated 23 min ago" in Manila time at the top.
-- A clear warning when the data is more than about 2 hours old (GitHub's schedule is approximate and can stall).
+- A clear warning when the data is more than about 2 hours old (the outside timer or GitHub can fail or stall).
 
 ### 7.7 Personal (stored on the phone)
 - **"I'm flipping this"** tick: hides the item from the picks, with a "Hidden · Undo" toast. A **My flips** list shows what's ticked so I can untick when sold.
@@ -138,7 +138,7 @@ Each batch is usable or checkable on its own. Details in `docs/plan.md`.
 
 ## 10. Assumptions and known risks
 1. **Tax rules** (section 5, step 4): rate, rounding, cap, the 50 gp floor and the exempt list match the Wiki's Grand Exchange page as of 2026-11-17. Jagex changes the list now and then (last on 29 May 2025); a missing item only makes its profit look smaller.
-2. **GitHub's schedule is approximate:** runs can start late, and schedules only run from `main`, so the hourly job can't be tried from `next` except by starting it by hand. GitHub also switches off schedules in repos with no activity for 60 days; whether the job's own writes to `data` count as activity is not confirmed. GitHub emails a warning first, and the freshness warning is the safety net.
+2. **The hourly start depends on an outside timer:** GitHub's own schedule never fired in this repo (2026-11-17), so cron-job.org starts the job. Its key expires (renew it before the date in `TODO-PC.md`), and the service can fail; cron-job.org emails on failures, and the freshness warning is the safety net. Runs always use `main`, so the job can't be tried from `next` except by starting it by hand.
 3. **Window hours as a phone setting:** the job scores with the default windows. Letting the phone use different hours means the page must redo the scoring from the hourly history. To decide in the data job batch plan (recommendation in `docs/status.md`).
 4. **Thin items:** a few trades set the hourly price, so suggested prices are rougher. The row says so.
 5. **History length:** the API gives about 15 days of hourly data, just enough for 14 nights. Items with less get a flag.
