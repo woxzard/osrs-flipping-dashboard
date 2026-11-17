@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAgo, formatManilaTime } from './time.ts';
+import { formatAgo, formatManilaDay, formatManilaDayTime, formatManilaTime } from './time.ts';
 
 const at = new Date('2026-11-16T06:37:00Z');
 const later = (ms: number) => new Date(at.getTime() + ms);
@@ -27,5 +27,13 @@ describe('formatAgo', () => {
 
   it('never goes negative when the phone clock is behind', () => {
     expect(formatAgo(at, later(-5 * MIN))).toBe('just now');
+  });
+});
+
+describe('Manila days', () => {
+  it('names the day in Manila, whatever the device time zone', () => {
+    // 16:30 UTC on the 16th is 00:30 on the 17th in Manila.
+    expect(formatManilaDay(new Date('2026-11-16T16:30:00Z'))).toBe('17 Nov');
+    expect(formatManilaDayTime(new Date('2026-11-16T16:30:00Z'))).toBe('Tue 17 Nov, 00:30');
   });
 });

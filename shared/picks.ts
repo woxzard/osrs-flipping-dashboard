@@ -67,3 +67,23 @@ export function parsePicksFile(value: unknown): PicksFile {
   }
   return value as PicksFile;
 }
+
+/** Checks a downloaded history file; throws with a plain reason if it's unusable. */
+export function parseHistoryFile(value: unknown, id: number): HistoryFile {
+  const { id: fileId, points } = (value ?? {}) as Record<string, unknown>;
+  if (fileId !== id) throw new Error('History file is for another item');
+  if (!Array.isArray(points)) throw new Error('History file has no hours');
+  const price = (cell: unknown) => cell === null || (typeof cell === 'number' && cell > 0);
+  const clean = (points as unknown[]).filter(
+    (point): point is HistoryFile['points'][number] =>
+      Array.isArray(point) &&
+      point.length >= 5 &&
+      typeof point[0] === 'number' &&
+      Number.isFinite(point[0]) &&
+      price(point[1]) &&
+      price(point[2]) &&
+      typeof point[3] === 'number' &&
+      typeof point[4] === 'number',
+  );
+  return { id, points: clean.sort((a, b) => a[0] - b[0]) };
+}

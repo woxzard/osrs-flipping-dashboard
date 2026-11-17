@@ -8,6 +8,10 @@
   --tile: #e9e5da;
   --warn-bg: #fbf0d9;
   --warn-text: #6b4a00;
+  --series-sold: #2a78d6;
+  --series-bought: #eb6834;
+  --night: rgb(42 120 214 / 8%);
+  --grid: #e6e2d8;
   font-family:
     system-ui,
     -apple-system,
@@ -29,6 +33,10 @@
     --tile: #2b2f34;
     --warn-bg: #3a3020;
     --warn-text: #f1d39a;
+    --series-sold: #3987e5;
+    --series-bought: #d95926;
+    --night: rgb(57 135 229 / 12%);
+    --grid: #2e3238;
   }
 }
 
@@ -395,4 +403,272 @@ body {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* The whole card opens the item: the name's link is stretched over it. */
+.pick {
+  position: relative;
+}
+
+.row-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.row-link::after {
+  content: '';
+  position: absolute;
+  inset: -0.75rem -1rem;
+  border-radius: 0.75rem;
+}
+
+.row-link:focus-visible {
+  outline: none;
+}
+
+.row-link:focus-visible::after {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+}
+
+.list > li:has(.row-link:active) {
+  opacity: 0.75;
+}
+
+/* Item detail */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  margin-left: -0.5rem;
+  padding: 0.5rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: none;
+  border: 0;
+  touch-action: manipulation;
+}
+
+.back span {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.detail-head {
+  margin: 0.5rem 0 1rem;
+}
+
+.detail-head .pick-name {
+  font-size: 1.375rem;
+}
+
+.detail .pick-stats.card {
+  margin: 0;
+}
+
+.detail-section {
+  margin-top: 1.5rem;
+}
+
+.detail-section h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.125rem;
+}
+
+.last-hour {
+  margin: 0 0 0.5rem;
+}
+
+.chart {
+  margin: 0;
+}
+
+.chart svg {
+  display: block;
+  max-width: 100%;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 3px;
+  margin-right: 0.25rem;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+.swatch.sold {
+  background: var(--series-sold);
+}
+
+.swatch.bought {
+  background: var(--series-bought);
+}
+
+.swatch.night {
+  height: 0.75rem;
+  background: var(--night);
+  border: 1px solid var(--border);
+}
+
+.chart-readout {
+  min-height: 1.5em;
+  margin: 0.375rem 0;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart .grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.chart .axis {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.chart .night-band {
+  fill: var(--night);
+}
+
+.chart .series {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart .series.sold,
+.chart .offer.sold {
+  stroke: var(--series-sold);
+}
+
+.chart .series.bought,
+.chart .offer.bought {
+  stroke: var(--series-bought);
+}
+
+.chart .offer {
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.chart .offer-label {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+}
+
+.chart .crosshair line {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.chart .crosshair circle {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.chart .crosshair circle.sold {
+  fill: var(--series-sold);
+}
+
+.chart .crosshair circle.bought {
+  fill: var(--series-bought);
+}
+
+.chart-placeholder {
+  min-height: 15rem;
+  border-radius: 0.75rem;
+  background: var(--tile);
+}
+
+.chart-placeholder.card {
+  background: var(--surface);
+}
+
+.nights {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nights li {
+  display: grid;
+  justify-items: center;
+  padding: 0.25rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+.nights li.hit {
+  background: var(--surface);
+}
+
+.nights li.miss {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.night-mark {
+  font-weight: 700;
+}
+
+.night-date {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.facts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+}
+
+.facts div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.wiki-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  font-weight: 600;
+  color: var(--text);
 }

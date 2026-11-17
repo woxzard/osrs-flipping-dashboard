@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PicksFile } from '../shared/picks.ts';
 import { formatGp } from '../shared/format.ts';
-import { FEW_PICKS, rankPicks, settingsFor, type Choice, type Ranking } from '../shared/rank.ts';
+import {
+  FEW_PICKS,
+  isPublishedItem,
+  rankPicks,
+  settingsFor,
+  type Choice,
+  type Ranking,
+} from '../shared/rank.ts';
 import { cashPerSlot } from '../shared/scoring.ts';
 import { SETTINGS } from '../shared/settings.ts';
 import { formatAgo, formatManilaTime } from '../shared/time.ts';
 import { loadStoredChoice, readChoice, storeChoice, writeChoice } from './choice.ts';
+import { BackButton } from './BackButton.tsx';
 import { Controls } from './Controls.tsx';
 import { loadPicks } from './data.ts';
+import { ItemDetail } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
+import { itemHref, readItemId, restoreListScroll, saveListScroll, withoutItem } from './route.ts';
 
 type State =
   | { status: 'loading' }
@@ -46,6 +56,51 @@ function useChoice() {
   }, []);
 
   return [choice, change] as const;
+}
+
+/**
+ * The open item, kept in the address (`?item=27226`). Opening one adds a
+ * history entry, so back (button, gesture or the page's own) returns to the
+ * list, which stays mounted underneath at the same scroll position.
+ */
+function useItem() {
+  const [itemId, setItemId] = useState<number | null>(() => readItemId(window.location.search));
+
+  useEffect(() => {
+    const onPop = () => setItemId(readItemId(window.location.search));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Back on the list from an item: put it where it was.
+  const openedFrom = useRef<number | null>(itemId);
+  useLayoutEffect(() => {
+    if (itemId === null && openedFrom.current !== null) {
+      restoreListScroll(window.location.search);
+    }
+    openedFrom.current = itemId;
+  }, [itemId]);
+
+  const open = useCallback((id: number) => {
+    saveListScroll(window.location.search, window.scrollY);
+    window.history.pushState({ fromList: true }, '', itemHref(window.location.search, id));
+    // The page itself restores the list's scroll when coming back to it, for
+    // this entry only; the list's own entry keeps the browser's restoring.
+    window.history.scrollRestoration = 'manual';
+    setItemId(id);
+  }, []);
+
+  const close = useCallback(() => {
+    if ((window.history.state as { fromList?: boolean } | null)?.fromList) {
+      window.history.back(); // popstate closes it
+      return;
+    }
+    // Opened from a link: there's no list entry to go back to, so make one.
+    window.history.replaceState(null, '', withoutItem(window.location.search));
+    setItemId(null);
+  }, []);
+
+  return { itemId, open, close };
 }
 
 const VOLUME_NAME = { all: '', high: 'High-volume ', low: 'Low-volume ' } as const;
@@ -114,10 +169,12 @@ function Picks({
   picks,
   choice,
   onShowAll,
+  onOpen,
 }: {
   picks: PicksFile;
   choice: Choice;
   onShowAll: () => void;
+  onOpen: (id: number) => void;
 }) {
   const settings = useMemo(() => settingsFor(picks.settings), [picks.settings]);
   const ranking = useMemo(
@@ -135,7 +192,7 @@ function Picks({
   }
 
   const short = ranking.picks.length < FEW_PICKS && (
-    <section className="card" aria-labelledby="short-title" aria-live="polite">
+    <section className="card" aria-labelledby="short-title">
       <h2 id="short-title">{ranking.picks.length === 0 ? 'Nothing qualifies' : 'A short list'}</h2>
       <p>{shortListReason(ranking, choice)}</p>
       {choice.volume !== 'all' && ranking.qualifyingAll > ranking.qualifying && (
@@ -162,7 +219,12 @@ function Picks({
         <ol className="list" aria-label="Picks">
           {ranking.picks.map((pick) => (
             <li key={pick.item.id}>
-              <PickRow pick={pick} settings={settings} />
+              <PickRow
+                pick={pick}
+                settings={settings}
+                href={itemHref(window.location.search, pick.item.id)}
+                onOpen={() => onOpen(pick.item.id)}
+              />
             </li>
           ))}
         </ol>
@@ -175,30 +237,9 @@ function Picks({
   );
 }
 
-export function App() {
-  const { state, retry } = usePicks();
-  const [choice, setChoice] = useChoice();
-
+function PicksStates({ state, retry }: { state: State; retry: () => void }) {
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Overnight flips</h1>
-        {state.status === 'ready' ? (
-          <Freshness generatedAt={state.picks.generatedAt} />
-        ) : (
-          <p className="muted">Old School RuneScape</p>
-        )}
-      </header>
-
-      <Controls
-        choice={choice}
-        cashPerSlot={cashPerSlot(choice.cash, choice.freeSlots)}
-        highVolumeShare={
-          (state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS).highVolumeShare
-        }
-        onChange={setChoice}
-      />
-
+    <>
       {state.status === 'loading' && (
         <ul className="list skeleton" aria-busy="true" aria-label="Loading picks">
           {[1, 2, 3].map((row) => (
@@ -223,14 +264,98 @@ export function App() {
           </button>
         </section>
       )}
+    </>
+  );
+}
 
-      {state.status === 'ready' && (
-        <Picks
-          picks={state.picks}
+function Detail({
+  itemId,
+  state,
+  retry,
+  choice,
+  onBack,
+}: {
+  itemId: number;
+  state: State;
+  retry: () => void;
+  choice: Choice;
+  onBack: () => void;
+}) {
+  if (state.status !== 'ready') {
+    return (
+      <>
+        <BackButton onBack={onBack} />
+        <PicksStates state={state} retry={retry} />
+      </>
+    );
+  }
+  const item = state.picks.items.find((entry) => entry.id === itemId);
+  if (!item || !isPublishedItem(item)) {
+    return (
+      <>
+        <BackButton onBack={onBack} />
+        <section className="card" aria-labelledby="gone-title">
+          <h2 id="gone-title">Not in the latest update</h2>
+          <p>This item isn't among the flips the last hourly update looked at.</p>
+        </section>
+      </>
+    );
+  }
+  return (
+    <ItemDetail
+      item={item}
+      choice={choice}
+      settings={settingsFor(state.picks.settings)}
+      generatedAt={state.picks.generatedAt}
+      onBack={onBack}
+    />
+  );
+}
+
+export function App() {
+  const { state, retry } = usePicks();
+  const [choice, setChoice] = useChoice();
+  const { itemId, open, close } = useItem();
+
+  return (
+    <main className="page">
+      {/* The list stays mounted under an open item, so back finds it as it was. */}
+      <div hidden={itemId !== null}>
+        <header className="page-header">
+          <h1>Overnight flips</h1>
+          {state.status === 'ready' ? (
+            <Freshness generatedAt={state.picks.generatedAt} />
+          ) : (
+            <p className="muted">Old School RuneScape</p>
+          )}
+        </header>
+
+        <Controls
           choice={choice}
-          onShowAll={() => setChoice({ ...choice, volume: 'all' })}
+          cashPerSlot={cashPerSlot(choice.cash, choice.freeSlots)}
+          highVolumeShare={
+            (state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS)
+              .highVolumeShare
+          }
+          onChange={setChoice}
         />
+
+        <PicksStates state={state} retry={retry} />
+
+        {state.status === 'ready' && (
+          <Picks
+            picks={state.picks}
+            choice={choice}
+            onShowAll={() => setChoice({ ...choice, volume: 'all' })}
+            onOpen={open}
+          />
+        )}
+      </div>
+
+      {itemId !== null && (
+        <Detail itemId={itemId} state={state} retry={retry} choice={choice} onBack={close} />
       )}
+
       <footer className="footer">Prices and icons: OSRS Wiki</footer>
     </main>
   );

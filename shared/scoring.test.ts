@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { cashPerSlot, scoreItem, sizePick, type HourPoint, type Sizable } from './scoring.ts';
+import {
+  cashPerSlot,
+  buyWindowsBetween,
+  nightStarts,
+  scoreItem,
+  sizePick,
+  type HourPoint,
+  type Sizable,
+} from './scoring.ts';
 import { SETTINGS } from './settings.ts';
 
 const HOUR = 3600;
@@ -330,5 +338,41 @@ describe('cashPerSlot', () => {
     expect(cashPerSlot(50_000_000, 2)).toBe(25_000_000);
     expect(cashPerSlot(10_000_000, 3)).toBe(3_333_333);
     expect(cashPerSlot(10_000_000, 0)).toBe(10_000_000);
+  });
+});
+
+describe('nightStarts', () => {
+  it('dates the published nights: buy windows that opened at 22:00 Manila, newest finished last', () => {
+    // 12:37 Manila on 17 Nov: the night of 15→16 Nov is the newest whose sell window (to 22:00 on the 16th) has closed.
+    const starts = nightStarts(new Date('2026-11-17T04:37:01Z'), 14);
+    expect(starts).toHaveLength(14);
+    expect(starts.at(-1)?.toISOString()).toBe('2026-11-15T14:00:00.000Z');
+    expect(starts[0]?.toISOString()).toBe('2026-11-02T14:00:00.000Z');
+  });
+
+  it('moves on once the newest sell window closes at 22:00 Manila', () => {
+    const starts = nightStarts(new Date('2026-11-17T14:00:00Z'), 1);
+    expect(starts[0]?.toISOString()).toBe('2026-11-16T14:00:00.000Z');
+  });
+});
+
+describe('buyWindowsBetween', () => {
+  it('gives 22:00–07:00 Manila each night, cut to the range', () => {
+    // 12:00 Manila on 16 Nov to 12:00 Manila on 17 Nov.
+    const from = Date.parse('2026-11-16T04:00:00Z') / 1000;
+    const to = Date.parse('2026-11-17T04:00:00Z') / 1000;
+    const windows = buyWindowsBetween(from, to).map(([start, end]) => [
+      new Date(start * 1000).toISOString(),
+      new Date(end * 1000).toISOString(),
+    ]);
+    expect(windows).toEqual([['2026-11-16T14:00:00.000Z', '2026-11-16T23:00:00.000Z']]);
+  });
+
+  it('cuts a window that started before the range', () => {
+    const from = Date.parse('2026-11-16T20:00:00Z') / 1000; // 04:00 Manila
+    const to = Date.parse('2026-11-17T04:00:00Z') / 1000;
+    expect(buyWindowsBetween(from, to)).toEqual([
+      [from, Date.parse('2026-11-16T23:00:00Z') / 1000],
+    ]);
   });
 });

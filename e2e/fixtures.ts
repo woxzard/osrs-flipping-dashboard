@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { test as base, expect, type Page } from '@playwright/test';
 
 const PICKS_URL = '**/osrs-flipping-dashboard/data/picks.json';
@@ -11,6 +11,24 @@ export const samplePicks = readFileSync(
 
 /** 23 minutes after the sample results file says it was generated (12:37 Manila). */
 export const NOW = new Date('2026-11-17T05:00:30Z');
+
+const HISTORY_URL = '**/osrs-flipping-dashboard/data/history/*.json';
+
+/**
+ * Item histories from samples/published/history (27226, 10476, 19707); any
+ * other item gets "not found". 'offline' fails every history request.
+ */
+export async function serveHistory(page: Page, reply: 'samples' | 'offline' = 'samples') {
+  await page.unroute(HISTORY_URL);
+  await page.route(HISTORY_URL, (route) => {
+    if (reply === 'offline') return route.abort('internetdisconnected');
+    const id = /history\/(\d+)\.json$/.exec(route.request().url())?.[1] ?? '';
+    const file = new URL(`../samples/published/history/${id}.json`, import.meta.url);
+    return existsSync(file)
+      ? route.fulfill({ contentType: 'application/json', body: readFileSync(file, 'utf8') })
+      : route.fulfill({ status: 404 });
+  });
+}
 
 const ICONS_URL = 'https://oldschool.runescape.wiki/images/**';
 

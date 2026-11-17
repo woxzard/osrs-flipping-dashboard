@@ -5,7 +5,18 @@ import type { Settings } from '../shared/settings.ts';
 import { flagText, TREND_TEXT } from './labels.ts';
 
 /** One pick: what to offer, what it ties up, what it should make, how often it worked. */
-export function PickRow({ pick, settings }: { pick: RankedPick; settings: Settings }) {
+export function PickRow({
+  pick,
+  settings,
+  href,
+  onOpen,
+}: {
+  pick: RankedPick;
+  settings: Settings;
+  /** The item's own address, so the row is a real link (new tab, copy link). */
+  href: string;
+  onOpen: () => void;
+}) {
   const { item } = pick;
   // Out of the full count even for a newer item, as the ranking does (docs/spec.md §5).
   const nights = Math.max(settings.nights, item.nights.length);
@@ -14,7 +25,20 @@ export function PickRow({ pick, settings }: { pick: RankedPick; settings: Settin
     <article className="pick" aria-label={item.name}>
       <header className="pick-head">
         <ItemIcon key={item.icon} icon={item.icon} name={item.name} />
-        <h2 className="pick-name">{item.name}</h2>
+        <h2 className="pick-name">
+          {/* The link covers the whole card (see .row-link in styles.css). */}
+          <a
+            className="row-link"
+            href={href}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+              event.preventDefault();
+              onOpen();
+            }}
+          >
+            {item.name}
+          </a>
+        </h2>
       </header>
       <dl className="pick-stats">
         <div>
