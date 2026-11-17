@@ -18,11 +18,11 @@ Nothing to switch on for merging: PRs into `next` are merged by the "Merge when 
 
 ## Hourly start (outside timer) – all on the phone, about 5 minutes
 GitHub's own hourly schedule never ran, so a free timer service starts the job instead.
-- [ ] 9. **Make a key that can only start this repo's workflows:** github.com → your picture → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token.
-  - Name: `osrs hourly trigger`. Expiration: the longest offered (write the date here: ________).
+- [ ] 9. **Make a key that can only start this repo's workflows:** in a phone browser (not the GitHub app), open **https://github.com/settings/personal-access-tokens/new** (if a menu is missing, switch the browser to "Desktop site"). The long way: your picture → Settings → Developer settings (bottom of the list) → Personal access tokens → Fine-grained tokens → Generate new token.
+  - Name: `osrs hourly trigger`. Resource owner: `woxzard`. Expiration: the longest offered, or Custom a year ahead (write the date here: ________).
   - Repository access: **Only select repositories** → `osrs-flipping-dashboard`.
-  - Permissions → Repository permissions → **Actions: Read and write** (nothing else).
-  - Generate, and copy the key (it's shown once).
+  - Permissions → Repository permissions (or "Add permissions") → **Actions: Read and write**; GitHub adds "Metadata: Read-only" itself. Nothing else.
+  - Generate token, and copy the key (`github_pat_…`; it's shown once).
 - [ ] 10. **Set up the timer:** cron-job.org → sign up (free) → Create cronjob.
   - Title: `OSRS hourly data`.
   - URL: `https://api.github.com/repos/woxzard/osrs-flipping-dashboard/actions/workflows/hourly-data.yml/dispatches`
