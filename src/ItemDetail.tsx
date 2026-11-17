@@ -6,6 +6,8 @@ import { cashPerSlot, nightStarts, sizePick } from '../shared/scoring.ts';
 import type { Settings } from '../shared/settings.ts';
 import { formatAgo, formatManilaDay, formatManilaDayTime } from '../shared/time.ts';
 import { useNow } from './Freshness.tsx';
+import { formatHour } from './hours.ts';
+import { endsNextDay } from '../shared/rescore.ts';
 import type { Flip, Offer } from './personal.ts';
 import { loadHistory } from './data.ts';
 import { BackButton } from './BackButton.tsx';
@@ -326,8 +328,8 @@ export function ItemDetail({
         </h2>
         <p className="muted small">
           Would both your buy and your sell have filled? Each night runs from{' '}
-          {String(settings.buyStartHour).padStart(2, '0')}:00 to{' '}
-          {String(settings.sellEndHour).padStart(2, '0')}:00 the next day, Manila time.
+          {formatHour(settings.buyStartHour)} to {formatHour(settings.sellEndHour)}
+          {endsNextDay(settings) ? ' the next day' : ''}, Manila time.
         </p>
         <ol className="nights" aria-label="Nights, oldest first">
           {item.nights.map((hit, index) => {

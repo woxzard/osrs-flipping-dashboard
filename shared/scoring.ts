@@ -45,7 +45,8 @@ const HOUR = 3600;
 const DAY = 24 * HOUR;
 const MANILA_OFFSET = 8 * HOUR;
 
-const hoursBetween = (from: number, to: number) => (((to - from) % 24) + 24) % 24;
+/** Hours from one clock hour to the next time it's another (22 → 7 is 9). */
+export const hoursBetween = (from: number, to: number) => (((to - from) % 24) + 24) % 24;
 
 interface Night {
   /** Lowest hourly buy-side price in the buy window, if anything traded. */

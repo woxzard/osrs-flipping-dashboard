@@ -86,6 +86,7 @@ export function Watchlist({
   shown,
   watch,
   watched,
+  unscored,
   items,
   status,
   retry,
@@ -104,6 +105,8 @@ export function Watchlist({
   watch: SavedItem[];
   /** The same items, by id. */
   watched: ReadonlySet<number>;
+  /** In the update, but not scorable with my night hours. */
+  unscored: ReadonlySet<number>;
   /** The items in the latest update (the ~290 scored each hour). */
   items: readonly PublishedItem[];
   status: UpdateStatus;
@@ -273,7 +276,13 @@ export function Watchlist({
                 ) : (
                   <ShortRow
                     saved={saved}
-                    note={item ? noProfitReason(item, perSlot) : missingNote}
+                    note={
+                      item
+                        ? noProfitReason(item, perSlot)
+                        : unscored.has(saved.id)
+                          ? "Your night hours don't leave enough trading to score it this hour."
+                          : missingNote
+                    }
                     actions={remove(saved)}
                     onOpen={open}
                   />
