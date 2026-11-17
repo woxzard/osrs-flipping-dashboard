@@ -80,6 +80,8 @@ test('touching the chart reads out that hour', async ({ page }) => {
   await page.goto('/?item=27226');
   const chart = page.getByRole('img', { name: /^Hourly prices/ });
   await expect(page.getByText('Touch the chart to read an hour.')).toBeVisible();
+  // Mid-screen, clear of the tab bar.
+  await chart.evaluate((element) => element.scrollIntoView({ block: 'center' }));
 
   const box = await chart.boundingBox();
   if (!box) throw new Error('no chart');

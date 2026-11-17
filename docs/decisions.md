@@ -87,3 +87,14 @@
 | Decision | Why |
 |---|---|
 | The hourly job is started by cron-job.org (free) calling GitHub's "run workflow" API at :07, with a fine-grained key limited to Actions on this repo; GitHub's own schedule is removed | Owner's answer. GitHub's schedule never fired a single run in 9+ hours, also after rewriting it (#20). Keeping both could run the job twice an hour. The key only lets the service start, re-run or cancel this repo's workflows. |
+
+### 2026-11-17 – Personal
+| Decision | Why |
+|---|---|
+| Trades are marked by hand with "I'm flipping this"; no automatic tracking from my RuneScape name | Owner's decision. Jagex doesn't publish a player's Grand Exchange trades, and the tools that record them need RuneLite plugins on a PC, while I mostly play on my phone. |
+| Picks, My flips, Watchlist and Settings are tabs in a bottom bar; the tab is in the address (`?view=flips`), and each list keeps its own scroll position | Owner's answer. Picks stay one tap away, in thumb reach; back, refresh and a link bring the same tab back. |
+| Ticked items stay hidden from the picks until I untick them (Sold); nothing comes back by itself | Owner's answer. An item still in a slot would otherwise come back as a fresh pick. My flips shows how long ago each was ticked. |
+| No export or backup of my lists in this batch | Owner's answer. The lists are small and easy to rebuild; the flip log gets an export. Each address (`next` preview, the released page, a Home Screen copy) keeps its own lists. |
+| Window hours can be changed on the phone; the page then re-scores from the items' hourly history | Owner's answer. Costs about 3.7 MB of downloads per hourly update while my hours differ from the job's; the job keeps scoring with the defaults. |
+| Ticking a flip doesn't change "free slots" | Owner's answer. Changing it by itself would quietly resize every pick. |
+| The watchlist search covers the ~290 items scored each hour, not the whole game | Owner's answer. Items outside them have no prices; a full list waits for the watched-item notification, which changes the job anyway. |
