@@ -47,9 +47,12 @@ describe('rankPicks on the real published run', () => {
     });
     expect(cashPerSlot).toBe(50_000_000);
     expect(picks).toHaveLength(TOP_PICKS);
-    expect(picks[0]).toMatchObject({ item: { name: 'Purple sweets' }, quantity: 10_000 });
-    expect(picks[0].cost).toBe(10_000 * 3_962);
-    expect(picks[0].returnShare).toBeCloseTo(172 / 3_962);
+    expect(picks[0]).toMatchObject({
+      item: { name: 'Purple sweets' },
+      quantity: 10_000,
+      cost: 10_000 * 3_962,
+    });
+    expect(picks[0]?.returnShare).toBeCloseTo(172 / 3_962);
   });
 
   it('splits the cash across the free slots', () => {
