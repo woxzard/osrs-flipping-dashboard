@@ -14,7 +14,7 @@
 - **How I try it:** a preview link for `next` on my phone, at a fixed address (Vercel; the address goes in `docs/status.md` once the foundation batch has it).
 - **Where it runs:** the page on Vercel (static); the data job on GitHub Actions, every hour, from `main`.
 - **Data:** no database. Market data is rebuilt every hour, so nothing there can be lost. My settings (cash, hidden items, watchlist) stay in the phone's browser storage.
-- **Context that shapes the design:** single user, phone-first, ₱0 a month, Manila time (GMT+8), amounts in gp shown short (950k, 12.4m). The repo is public.
+- **Context that shapes the design:** single user, phone-first, ₱0 a month, Manila time (GMT+8), amounts in gp shown short (950k, 12.4m), except buy and sell prices, which are exact. The repo is public.
 
 Full details and build order live in `docs/spec.md`. If the spec and this file disagree, ask me.
 

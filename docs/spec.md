@@ -13,7 +13,7 @@ Recommendations are odds, not promises: past nights don't guarantee tonight, and
 - Me only. No login. Members account, 8 Grand Exchange slots.
 - Phone-first; must work at 320 px wide, in dark mode and with large text.
 - ₱0 a month.
-- Manila time (GMT+8) everywhere. Amounts in gp, shown short (950k, 12.4m).
+- Manila time (GMT+8) everywhere. Amounts in gp, shown short (950k, 12.4m); buy and sell prices exact (13,751,666), since they are typed into the Grand Exchange.
 - No offline mode in v1.
 - The repo is public (needed for the free setup below).
 
@@ -87,14 +87,14 @@ Nothing here is irreplaceable until the flip log (later); that gets an export be
 
 ### 7.2 Controls
 At the top of the screen, kept in the URL so refresh and back keep them.
-- **Cash to spend:** chips 10m / 50m / 100m, plus a custom amount (numeric keyboard). Remembers the last choice.
+- **Cash to spend:** chips 10m / 50m / 100m, plus a custom amount (numeric keyboard; 100k to 2,147m, typed as 25m, 750k or 1.5b). First visit 50m; after that remembers the last choice.
 - **Free slots:** a stepper 1–8, default 1.
-- **Volume:** High / Low tabs, plus All. High = my order is a small part of what trades (fills reliably, thinner margin). Low = fatter margin, may not fill. The exact cut-off is proposed from real data in the dashboard batch and shown on the page.
+- **Volume:** High / Low tabs, plus All (the default). High = my order is at most 2% of what usually trades in my buy window (fills reliably, thinner margin). Low = more than that (fatter margin, may not fill). The cut-off is a starting value in the settings file and is shown on the page.
 - Acceptance: changing any control updates the list at once; refresh, back and a pasted link restore cash, slots and tab.
 
 ### 7.3 Picks list
 - Top 10 for the chosen cash, slots and volume. If fewer than 6 qualify, show what there is and say why.
-- Each row: item icon and name; **buy at**, **sell at**; quantity and the cash it ties up; expected profit after tax and return on that cash (%); fill chance ("11 of 14 nights"); trend arrow with a word (rising / flat / falling); warning flags. Thin (low-volume) items say their prices are rougher.
+- Each row: item icon and name; **buy at**, **sell at** (exact gp, as typed into the Grand Exchange); quantity and the cash it ties up; expected profit after tax and return on that cash (%); fill chance ("8 of 14 nights · typical": 10+ strong, 8–9 typical, under 8 below typical); trend arrow with a word (rising / flat / falling); warning flags. Thin (low-volume) items say their prices are rougher.
 - Acceptance: the whole row is tappable (at least 44 px); loading shows skeletons; empty, error and stale-data states are written out; works at 320 px, in dark mode and with large text.
 
 ### 7.4 Item detail
@@ -107,7 +107,7 @@ Icon + text, never colour alone:
 - price falling for several days;
 - sudden spike (often a game update or manipulation);
 - few trades in my hours;
-- tax eats most of the margin;
+- tax eats most of the margin (shown as "Tax takes over half the margin"; flagged at 60%);
 - last trade is old;
 - less than 14 days of history.
 
