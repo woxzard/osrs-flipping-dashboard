@@ -1,12 +1,13 @@
-/** The My flips and Watchlist tabs (docs/spec.md §7.7). */
+/** The My flips tab, and what list screens share (docs/spec.md §7.7). */
 import { formatExactGp, formatGp } from '../shared/format.ts';
 import { formatAgo } from '../shared/time.ts';
 import { useNow } from './Freshness.tsx';
 import { ItemIcon } from './ItemIcon.tsx';
+import { RowLink } from './RowLink.tsx';
 import type { Flip } from './personal.ts';
 import { itemHref } from './route.ts';
 
-function Empty({
+export function Empty({
   id,
   title,
   text,
@@ -57,17 +58,11 @@ function FlipRow({
       <header className="pick-head">
         <ItemIcon key={flip.icon} icon={flip.icon} name={flip.name} />
         <h2 className="pick-name">
-          <a
-            className="row-link"
+          <RowLink
             href={itemHref(window.location.search, flip.id)}
-            onClick={(event) => {
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-              event.preventDefault();
-              onOpen();
-            }}
-          >
-            {flip.name}
-          </a>
+            name={flip.name}
+            onOpen={onOpen}
+          />
         </h2>
       </header>
       <dl className="pick-stats">
@@ -159,23 +154,6 @@ export function MyFlips({
           ))}
         </ol>
       )}
-    </>
-  );
-}
-
-export function Watchlist({ onShowPicks }: { onShowPicks: () => void }) {
-  return (
-    <>
-      <header className="page-header">
-        <h1>Watchlist</h1>
-        <p className="muted">Items you follow, with this hour's numbers for your cash.</p>
-      </header>
-      <Empty
-        id="watch-empty"
-        title="Nothing watched yet"
-        text="Open an item and tap Watch to follow it here, even when it isn't a top pick."
-        onShowPicks={onShowPicks}
-      />
     </>
   );
 }

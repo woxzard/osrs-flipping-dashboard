@@ -833,3 +833,113 @@ body {
     animation: none;
   }
 }
+
+/* "★ Watching", "You're flipping this": a quiet label, text and not colour alone. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text);
+  background: var(--tile);
+  border-radius: 999px;
+}
+
+.pick-head .tag {
+  margin-left: auto;
+}
+
+.pick-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pick-actions .tag {
+  margin-top: 0.5rem;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Watchlist search */
+.watch-search {
+  margin-top: 1.25rem;
+}
+
+.watch-search .control-label {
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+.watch-search input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-size: max(1rem, 16px);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  border-radius: 0.5rem;
+}
+
+.watch-search input:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 1px;
+}
+
+.watch-search .small {
+  margin: 0.375rem 0 0;
+}
+
+.search-results {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-results li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.search-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.search-results .button {
+  margin-top: 0;
+}
+
+.search-none {
+  margin: 0.75rem 0 0;
+}
+
+.link-button {
+  min-height: 2.75rem;
+  padding: 0 0.25rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+}

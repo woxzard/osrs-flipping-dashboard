@@ -74,8 +74,24 @@ export function usePersonal() {
 
   const sold = useCallback((id: number) => remove('flips', id, 'Marked sold'), [remove]);
 
+  const watch = useCallback(
+    /** `announce` when the change isn't visible where it was made (the search). */
+    ({ id, name, icon }: ItemRef, announce = false) => {
+      change((current) =>
+        withEntry(current, 'watch', { id, name, icon, at: new Date().toISOString() }),
+      );
+      if (announce) toast({ text: 'Added to your watchlist' });
+    },
+    [change, toast],
+  );
+
+  const unwatch = useCallback(
+    (id: number) => remove('watch', id, 'Removed from your watchlist'),
+    [remove],
+  );
+
   return useMemo(
-    () => ({ personal, unsaved, startFlip, sold }),
-    [personal, unsaved, startFlip, sold],
+    () => ({ personal, unsaved, startFlip, sold, watch, unwatch }),
+    [personal, unsaved, startFlip, sold, watch, unwatch],
   );
 }

@@ -28,6 +28,7 @@ export function readView(search: string): View {
 /** The address of a tab's list, keeping the controls' choice and dropping any open item. */
 export function viewHref(search: string, view: View): string {
   const params = new URLSearchParams(search);
+  params.delete('q'); // a tab's search stays with that tab
   if (view === 'picks') params.delete('view');
   else params.set('view', view);
   return withoutItem(`?${params.toString()}`);
