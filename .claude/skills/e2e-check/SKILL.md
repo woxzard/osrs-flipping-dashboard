@@ -14,13 +14,13 @@ description: How to check this project end to end the way the owner uses it - ru
 
 ## What "end to end" means here
 - **The page:** Playwright with an iPhone profile (`playwright.config.ts`, checks in `e2e/`) tapping through the main path, against saved sample data (never the live `data` branch). `e2e/fixtures.ts` fixes the clock, answers the page's request for the results file with `samples/picks.sample.json` (`servePicks`), and blocks every other outside request. Chromium is pre-installed in cloud sessions: Playwright is pinned to its version (1.63.0); don't download browsers there. CI installs its own (`ci.yml`).
-- **The data job** (from the data job batch): a sample run on the saved API responses in `samples/`; the result is compared with a saved expected output.
+- **The data job:** `e2e/job.spec.ts` (part of `make e2e`, no browser) runs the job on the saved API responses in `samples/` and compares every file it writes with `samples/expected/`. By hand: `node job/run.ts --samples samples --out /tmp/out`. After a deliberate change to the scoring, the published fields or the samples, refresh the expected result with `npm run samples:expected` and read the diff before committing it.
 
 ## Samples
 - `samples/` holds real responses from the price API (`docs/spec.md` §4): the item list, latest and 24-hour data trimmed to about 300 items, and hourly history for 8 items chosen for their awkward cases (listed in `samples/README.json`). `picks.sample.json` is a hand-written results file for the page. Tests and checks read these; nothing calls the live site.
 - These files are big: never read them whole. Look at one item with a short script.
 - Refreshing them needs `prices.runescape.wiki`, which only the `osrs-flipping-dashboard` cloud environment allows. Always send the project's User-Agent and space the requests out.
-- Refresh with `make samples` (`job/capture-samples.ts`). Expect checks that depend on exact prices to need new expected results afterwards.
+- Refresh with `make samples` (`job/capture-samples.ts`); it also rewrites `samples/expected/`. Expect unit tests that depend on exact prices to need new numbers afterwards.
 
 ## Writing checks
 - Use the page as the owner would; find things by visible labels, not internals. Wait for a specific result, not a fixed delay.
@@ -34,5 +34,8 @@ description: How to check this project end to end the way the owner uses it - ru
 
 ## Lessons
 - Hours with no trades on one side come back with `null` for that side's price: the 3rd age amulet sample (10344) has many.
+- A real run of the job (`node job/run.ts --out /tmp/out`) needs `prices.runescape.wiki` and `NODE_USE_ENV_PROXY=1`, and makes about 300 spaced-out requests: do it once per batch that changes the job, not in a loop.
 - Node's `fetch` ignores the cloud session's proxy unless `NODE_USE_ENV_PROXY=1` is set (`make samples` sets it); without it the price site looks unreachable (`ENOTFOUND`).
 - Playwright's iPhone profiles default to WebKit, which cloud sessions don't have: the config forces Chromium. Real Safari behaviour is the owner's to confirm on the phone.
+- The bond sample (13190) is never a candidate (bonds can't be flipped), so the sample run scores 7 of the 8 items with history; the bond's history is still used by the scoring unit tests.
+- To look at a real run's output without new requests, re-rank the saved `picks.json` with `sizePick` from `shared/scoring.ts` in a short script.

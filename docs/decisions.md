@@ -41,3 +41,29 @@
 | The job runs its TypeScript directly with Node 22 | No extra library needed to run it. |
 | Requests to the Wiki go one at a time, 250 ms apart | Polite client; a few hundred history requests still finish in a couple of minutes. |
 | Vercel builds every branch except `data` and Dependabot's | `data` only holds results, and library-update PRs are covered by the checks. Claude's PR branches still get a preview. |
+
+### 2026-11-17 – Data job
+| Decision | Why |
+|---|---|
+| Window hours stay in the settings file in v1; revisit in the Personal batch | Owner's answer. Changing them on the phone means the phone must redo the scoring from raw history. |
+| At most 300 items get a history request each hour | Owner's answer. About 300 spaced-out requests, a little over a minute. |
+| Tax as in the spec (2% rounded down, 5m cap, nothing under 50 gp); only bonds are exempt for now | A web search agrees with the spec's numbers, but the Wiki's own page and its full exempt list couldn't be opened from the session. Taxing an exempt item only makes its profit look smaller. |
+| My buy offer is measured against the hourly "sold at once" price, my sell offer against the "bought at once" price | Those are the trades that would fill each offer. |
+| A night's "average" is the volume-weighted price over the whole night and following day; today's level is the last 24 hours | The 70% levels are "% below/above that average", applied to today's level. |
+| A night with no trades on a side counts as a miss; fewer than 5 measured nights, or prices too rare for a 70% level, means no score | Thin items aren't given prices the history can't support. |
+| Trend: straight-line slope of the daily level over 7 days; under 0.5% a day is flat. Falling halves the rank and raises the flag | Starting values, tuned in the backtest batch. |
+| Flag starting values: spike = today 25% above the usual level; thin = under 30 items a night in my buy window; tax-heavy = tax is at least half the margin; stale = a side hasn't traded for 6 hours | Starting values, all in `shared/settings.ts`. |
+| Candidates are ranked by gp traded in the last 24 hours (not item count) before the 300 cap | Item count would fill the list with cheap stackables; gp traded finds the items worth flipping. |
+| The run fails, publishing nothing, when: a list request fails; the lists cover under 2,000 items; the newest trade is over 2 hours old; under 100 candidates or under 50 scored items; more than 10% of history requests fail | "The Wiki failed or returned nonsense". A few failed history requests only drop those items. |
+| The results file lists every scored candidate, best first for 50m in one slot; until the dashboard batch the page shows the first ten | The page has no cash or slot controls yet. Unprofitable candidates stay in the file, at the bottom, for the watchlist later. |
+| Each item's history file keeps 16 days of hours as short rows | Covers the 14 measured nights plus today; about 12 KB per item. |
+
+### 2026-11-17 – Data job: fixes after the first real run
+| Decision | Why |
+|---|---|
+| Bonds are never picked (`notFlippableIds` in the settings file) | Owner's answer. The real run ranked the bond first, but a bond bought on the Grand Exchange is untradeable and costs 10% to make tradeable again. |
+| Tax-heavy flag: tax is at least 60% of the margin before tax (was 50%), and only when there is a margin | Owner's answer. At 50% the real run flagged 229 of 290 items; at 60% it flags 166 and none of the top twenty. To tune further in the backtest batch. |
+| Fill chance is counted out of 14 nights even when an item has less history | Owner's answer; matches the spec. 4 good nights of 5 no longer ranks like 80%. |
+| Tax exempt list: the Wiki's full list (48 item ids), checked 2026-11-17 | Rate, rounding, 5m cap and 50 gp floor also confirmed on the Wiki's Grand Exchange page. |
+| Hours of history in an unexpected shape are dropped; trade times that aren't numbers are ignored by the stuck-prices check | Code review: one broken value could otherwise publish an item with no price, or let old prices through as fresh. |
+| Left for later (code review, not bugs today): the trend only sees finished nights, so a sudden crash takes up to two days to raise "falling"; no retry when a Wiki request fails (the next hour retries); the windows must fit in 24 hours from the buy start | To weigh in the backtest and Personal batches. |
