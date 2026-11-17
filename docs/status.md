@@ -5,20 +5,20 @@ Read this at the start of every session. Updated at the end of each batch and ea
 _Last updated: 2026-11-17._
 
 ## Where we are
-- **Released on `main`:** setup and foundation batches. The page shows "No picks yet" until the data job is released.
-- **On `next`, not released:** the data job batch (PRs #7–#9 and the fixes from the first real run): scoring rules, the job, the hourly workflow. The release PR #10 (`next` → `main`, label `release`) is **ready for the owner to test and merge**.
-- **The real run is done (2026-11-17, 11:56 Manila):** 4,681 items, 300 candidates, 290 scored, 10 with too little history, 0 failed requests, 91 seconds. Prices were near the live ones. It led to four fixes, all agreed with the owner (`docs/decisions.md`): bonds are never picked, the tax-heavy flag starts at 60%, fill chance counts out of 14, and the tax exempt list is the Wiki's full list. `make check`, `make build` and `make e2e` pass in a cloud session, and `/code-review` has been run over the whole batch.
+- **Released on `main`:** setup, foundation and the **data job batch** (release PR #10, merged 2026-11-17). The hourly job runs from `main` at 7 minutes past every hour and publishes to the `data` branch.
+- **First published run (hand-started, 2026-11-17 12:37 Manila):** 290 items in `picks.json`, 290 history files, no bond. Top ten: Purple sweets, Uncut dragonstone, Dragonfire ward, Masori mask, Hydra leather, Crimson kisten, Ancient godsword, Pegasian boots, Red dragonhide, Sanfew serum(4). The page still shows the ten names only; prices and controls come with the dashboard batch.
+- **On `next`, not released:** nothing.
 - **Vercel:** connected. **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (not yet confirmed by the owner).
-- `owner-ok` was pre-approved by the owner for the high-risk PRs of this batch only, including the fix PR. Later high-risk PRs wait for the owner again.
+- No `owner-ok` is pre-approved: high-risk PRs wait for the owner again.
 
 ## Next up
-1. The owner tests and merges the release PR #10 (merge commit).
-2. After the merge: start "Hourly data" by hand (Actions → Hourly data → Run workflow), check that the `data` branch gets `picks.json` and the released page lists real item names with a fresh update time. Then move this batch to "Done" in `docs/plan.md`.
-3. Then the **Dashboard batch** (`docs/plan.md`): send its plan first.
+1. The **Dashboard batch** (`docs/plan.md`): send its plan first.
+2. At the start of that session, check that the scheduled runs kept going (Actions → Hourly data: a green run every hour, `data` branch updated within the last hour or so).
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site and the Wiki.
 
 ## Open questions for the owner
 1. **Does the `next` preview address above open on your phone?**
+2. **Does the released page show the ten item names and a fresh "Updated" time on your phone?** (The published file is fine; only you can see the real page.)
 
 Seen in the real run, for the dashboard and backtest batches (nothing to decide now):
 - No pick ever shows more than about 10 of 14 nights. The buy and sell prices are each reached on about 70% of nights, so both together land at 6–10 of 14. The dashboard should not present 8 of 14 as weak.
