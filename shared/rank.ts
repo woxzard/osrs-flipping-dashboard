@@ -102,6 +102,25 @@ export function volumeGroup(
     : 'low';
 }
 
+/**
+ * One item sized for the cash one slot gets, or null when it makes no profit
+ * there (also for NaN: an unreadable cash amount or slot count).
+ */
+export function rankItem(
+  item: PublishedItem,
+  perSlot: number,
+  settings: Settings = SETTINGS,
+): RankedPick | null {
+  const sized = sizePick(item, perSlot, settings);
+  if (!(sized.quantity > 0 && sized.profit > 0)) return null;
+  return {
+    ...sized,
+    item,
+    volume: volumeGroup(sized.quantity, item.buyWindowVolume, settings),
+    returnShare: sized.profit / sized.cost,
+  };
+}
+
 /** The best picks for the chosen cash, slots and volume tab. */
 export function rankPicks(
   items: readonly (PickItem & Partial<PublishedItem>)[],
@@ -114,15 +133,8 @@ export function rankPicks(
   for (const item of items) {
     if (!isPublishedItem(item)) continue;
     published += 1;
-    const sized = sizePick(item, perSlot, settings);
-    // Also catches NaN (an unreadable cash amount or slot count).
-    if (!(sized.quantity > 0 && sized.profit > 0)) continue;
-    all.push({
-      ...sized,
-      item,
-      volume: volumeGroup(sized.quantity, item.buyWindowVolume, settings),
-      returnShare: sized.profit / sized.cost,
-    });
+    const pick = rankItem(item, perSlot, settings);
+    if (pick) all.push(pick);
   }
   const chosen =
     choice.volume === 'all' ? all : all.filter((pick) => pick.volume === choice.volume);

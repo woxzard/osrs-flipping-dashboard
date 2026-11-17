@@ -17,7 +17,7 @@ import { BackButton } from './BackButton.tsx';
 import { Controls } from './Controls.tsx';
 import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
-import { FlipStatus, ItemDetail } from './ItemDetail.tsx';
+import { FlipStatus, ItemDetail, WatchButton } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
 import {
   itemHref,
@@ -30,9 +30,10 @@ import {
   withoutItem,
   type View,
 } from './route.ts';
-import { MyFlips, Watchlist } from './Lists.tsx';
+import { MyFlips } from './Lists.tsx';
+import { Watchlist } from './Watchlist.tsx';
 import { hiddenIds, type Flip, type Offer } from './personal.ts';
-import { usePersonal } from './usePersonal.ts';
+import { usePersonal, type ItemRef } from './usePersonal.ts';
 
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { TabBar } from './TabBar.tsx';
@@ -271,6 +272,7 @@ function Picks({
   picks,
   choice,
   hidden,
+  watched,
   onShowAll,
   onOpen,
   onFlip,
@@ -279,6 +281,8 @@ function Picks({
   choice: Choice;
   /** Items kept out of the picks: the ones I'm flipping or blocked. */
   hidden: ReadonlySet<number>;
+  /** Items on my watchlist, marked in the list. */
+  watched: ReadonlySet<number>;
   onShowAll: () => void;
   onOpen: (id: number) => void;
   onFlip: (pick: RankedPick) => void;
@@ -349,10 +353,20 @@ function Picks({
                 settings={settings}
                 href={itemHref(window.location.search, pick.item.id)}
                 onOpen={() => onOpen(pick.item.id)}
-                onFlip={() => {
-                  onFlip(pick);
-                  list.current?.focus({ preventScroll: true });
-                }}
+                watched={watched.has(pick.item.id)}
+                actions={
+                  <button
+                    type="button"
+                    className="button secondary"
+                    aria-label={`I'm flipping this: ${pick.item.name}`}
+                    onClick={() => {
+                      onFlip(pick);
+                      list.current?.focus({ preventScroll: true });
+                    }}
+                  >
+                    I'm flipping this
+                  </button>
+                }
               />
             </li>
           ))}
@@ -410,6 +424,10 @@ function Detail({
   flip,
   onFlip,
   onSold,
+  watched,
+  onWatch,
+  onUnwatch,
+  saved,
 }: {
   itemId: number;
   state: State;
@@ -420,7 +438,14 @@ function Detail({
   flip?: Flip;
   onFlip: (item: PublishedItem, offer: Offer) => void;
   onSold: () => void;
+  watched: boolean;
+  onWatch: (item: ItemRef) => void;
+  onUnwatch: () => void;
+  /** The item as on my lists, for when the update doesn't have it. */
+  saved?: ItemRef;
 }) {
+  // Kept from when the item was opened, so unwatching here doesn't rename the screen.
+  const [known] = useState(saved);
   if (state.status !== 'ready') {
     return (
       <>
@@ -435,13 +460,18 @@ function Detail({
       <>
         <BackButton label={backLabel} onBack={onBack} />
         <section className="card" aria-labelledby="gone-title">
-          <h2 id="gone-title">{flip ? flip.name : 'Not in the latest update'}</h2>
+          <h2 id="gone-title">{known?.name ?? 'Not in the latest update'}</h2>
           <p>
-            {flip ? 'Not in the latest update: it' : 'This item'} isn't among the flips the last
+            {known ? 'Not in the latest update: it' : 'This item'} isn't among the flips the last
             hourly update looked at.
           </p>
         </section>
         {flip && <FlipStatus flip={flip} canFlip={false} onFlip={() => {}} onSold={onSold} />}
+        {known && (
+          <div className="detail-actions">
+            <WatchButton watched={watched} onWatch={() => onWatch(known)} onUnwatch={onUnwatch} />
+          </div>
+        )}
       </>
     );
   }
@@ -457,6 +487,9 @@ function Detail({
       flip={flip}
       onFlip={(offer) => onFlip(item, offer)}
       onSold={onSold}
+      watched={watched}
+      onWatch={() => onWatch(item)}
+      onUnwatch={onUnwatch}
     />
   );
 }
@@ -467,16 +500,23 @@ export function App() {
   const { view, itemId, open, close, showView } = useNav(state.status !== 'loading');
   const settings = state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS;
   const onList = itemId === null;
-  const { personal, unsaved, startFlip, sold } = usePersonal();
+  const { personal, unsaved, startFlip, sold, watch, unwatch } = usePersonal();
   const hidden = useMemo(() => hiddenIds(personal), [personal]);
-  const sellNow = useMemo(
-    () =>
-      new Map(
-        state.status === 'ready'
-          ? state.picks.items.filter(isPublishedItem).map((item) => [item.id, item.sellPrice])
-          : [],
-      ),
+  const watchedIds = useMemo(
+    () => new Set(personal.watch.map((saved) => saved.id)),
+    [personal.watch],
+  );
+  const published = useMemo(
+    () => (state.status === 'ready' ? state.picks.items.filter(isPublishedItem) : []),
     [state],
+  );
+  const sellNow = useMemo(
+    () => new Map(published.map((item) => [item.id, item.sellPrice])),
+    [published],
+  );
+  const flippingIds = useMemo(
+    () => new Set(personal.flips.map((flip) => flip.id)),
+    [personal.flips],
   );
   const flipOf = (id: number | null) => personal.flips.find((flip) => flip.id === id);
 
@@ -515,6 +555,7 @@ export function App() {
             picks={state.picks}
             choice={choice}
             hidden={hidden}
+            watched={watchedIds}
             onShowAll={() => setChoice({ ...choice, volume: 'all' })}
             onOpen={open}
             onFlip={(pick) =>
@@ -541,7 +582,22 @@ export function App() {
         />
       </div>
       <div hidden={!onList || view !== 'watch'}>
-        <Watchlist onShowPicks={() => showView('picks')} />
+        <Watchlist
+          shown={onList && view === 'watch'}
+          watch={personal.watch}
+          watched={watchedIds}
+          items={published}
+          status={state.status}
+          retry={retry}
+          choice={choice}
+          settings={settings}
+          flipping={flippingIds}
+          unsaved={unsaved}
+          onWatch={(item) => watch(item, true)}
+          onUnwatch={unwatch}
+          onOpen={open}
+          onShowPicks={() => showView('picks')}
+        />
       </div>
       <div hidden={!onList || view !== 'settings'}>
         <SettingsScreen settings={settings} />
@@ -549,6 +605,7 @@ export function App() {
 
       {itemId !== null && (
         <Detail
+          key={itemId}
           itemId={itemId}
           state={state}
           retry={retry}
@@ -558,6 +615,10 @@ export function App() {
           flip={flipOf(itemId)}
           onFlip={startFlip}
           onSold={() => sold(itemId)}
+          watched={watchedIds.has(itemId)}
+          onWatch={watch}
+          onUnwatch={() => unwatch(itemId)}
+          saved={flipOf(itemId) ?? personal.watch.find((entry) => entry.id === itemId)}
         />
       )}
 

@@ -103,6 +103,28 @@ export function FlipStatus({
   ) : null;
 }
 
+/** Watch / Watching: a toggle that follows the item on my watchlist. */
+export function WatchButton({
+  watched,
+  onWatch,
+  onUnwatch,
+}: {
+  watched: boolean;
+  onWatch: () => void;
+  onUnwatch: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="button secondary"
+      aria-pressed={watched}
+      onClick={watched ? onUnwatch : onWatch}
+    >
+      <span aria-hidden="true">{watched ? '★' : '☆'}</span> {watched ? 'Watching' : 'Watch'}
+    </button>
+  );
+}
+
 export function ItemDetail({
   item,
   choice,
@@ -114,6 +136,9 @@ export function ItemDetail({
   flip,
   onFlip,
   onSold,
+  watched,
+  onWatch,
+  onUnwatch,
 }: {
   item: PublishedItem;
   choice: Choice;
@@ -129,6 +154,9 @@ export function ItemDetail({
   /** "I'm flipping this", with the offer as sized now. */
   onFlip: (offer: Offer) => void;
   onSold: () => void;
+  watched: boolean;
+  onWatch: () => void;
+  onUnwatch: () => void;
 }) {
   const { state, retry } = useHistory(item.id);
   const perSlot = cashPerSlot(choice.cash, choice.freeSlots);
@@ -197,6 +225,9 @@ export function ItemDetail({
         }
         onSold={onSold}
       />
+      <div className="detail-actions">
+        <WatchButton watched={watched} onWatch={onWatch} onUnwatch={onUnwatch} />
+      </div>
 
       {item.flags.length > 0 && (
         <ul className="flags" aria-label="Warnings">

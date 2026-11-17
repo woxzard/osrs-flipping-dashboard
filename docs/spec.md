@@ -120,6 +120,7 @@ Icon + text, never colour alone:
 - **"I'm flipping this"** tick: hides the item from the picks, with a "Hidden · Undo" toast. A **My flips** list shows what's ticked so I can untick when sold.
   - The button is on each pick and on the item screen. A flip keeps the offer as it was when ticked (buy, sell, quantity, profit) and shows how long ago; **Sold** (on the row or the item) removes it with "Marked sold · Undo". Ticked items stay hidden until marked sold; the tab bar shows how many there are.
 - **Watchlist** (pinned items) and **blocklist** (never show).
+  - Watch / Watching on the item screen; the Watchlist tab also searches the ~290 items scored this hour (search kept in the address). Each watched item shows this hour's numbers for my cash, or why not (no profit at this cash, not in this hour's update). Watched picks are marked "Watching". Remove has Undo.
 - **Settings:** buy and sell window hours.
 - Acceptance: toasts go away on their own (about 2.5 s; about 5 s with Undo); Undo instead of "Are you sure?"; everything survives closing the browser.
 
