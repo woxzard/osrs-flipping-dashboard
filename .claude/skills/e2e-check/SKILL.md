@@ -39,3 +39,6 @@ description: How to check this project end to end the way the owner uses it - ru
 - Playwright's iPhone profiles default to WebKit, which cloud sessions don't have: the config forces Chromium. Real Safari behaviour is the owner's to confirm on the phone.
 - The bond sample (13190) is never a candidate (bonds can't be flipped), so the sample run scores 7 of the 8 items with history; the bond's history is still used by the scoring unit tests.
 - To look at a real run's output without new requests, re-rank the saved `picks.json` with `sizePick` from `shared/scoring.ts` in a short script.
+- Page checks read `samples/published/` (a copy of a real run: `picks.json` and three history files), served by `servePicks` / `serveHistory`; icons are served or failed with `serveIcons`, never fetched.
+- The list stays mounted (hidden) under an open item, so the same text exists twice: scope item checks with `.filter({ visible: true })` or to the item's `article`.
+- Scroll checks: set the position with `window.scrollTo`, not the mouse wheel (it animates, so the saved position races the check).
