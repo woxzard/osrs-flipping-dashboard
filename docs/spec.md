@@ -48,7 +48,7 @@ Uses the last 14 nights of hourly history, measured in **my hours**. My night in
 1. **Windows:** buy window = while I sleep, default **22:00–07:00** Manila; sell window = the following day, default **07:00–22:00**.
 2. **Per past night:** the lowest hourly buy-side price in the buy window, and the highest hourly sell-side price in the sell window after it.
 3. **Suggested buy price:** a price reached on about 70% of those nights. **Suggested sell price:** a price reached on about 70% of the following days. Worked out as "% below/above that day's average" and applied to today's level, so a slowly rising or falling item still gets sensible prices.
-4. **Tax:** 2% of the sell price, rounded down, capped at 5m per item; nothing under 50 gp; a short list of exempt items (e.g. bonds). *Not yet checked against the Wiki's Grand Exchange page: do that in the data job batch.*
+4. **Tax:** 2% of the sell price, rounded down, capped at 5m per item; nothing under 50 gp; a short list of exempt items (e.g. bonds). *A web search (2026-11-17) agrees with these numbers; the Wiki's own page and its full exempt list are still unchecked, so only bonds are exempt for now.*
 5. **Profit per item** = sell − tax − buy.
 6. **Quantity** = the smallest of: the buy limit; what the cash for this slot can afford; a modest share of what actually trades in my buy window (starting value 10%), so the order can realistically fill. One buy limit per night.
 7. **Fill chance** = on how many of the 14 nights both the buy and the sell would have gone through. Shown as "11 of 14 nights".
@@ -137,7 +137,7 @@ Each batch is usable or checkable on its own. Details in `docs/plan.md`.
 - **Notification** on my phone when a watched item becomes a top pick.
 
 ## 10. Assumptions and known risks
-1. **Tax rules** (section 5, step 4) are from memory of the game's rules, not yet checked against the Wiki.
+1. **Tax rules** (section 5, step 4): rate, rounding, cap and the 50 gp floor agree with a web search; the Wiki's own exempt list is not yet checked, so only bonds are treated as exempt.
 2. **GitHub's schedule is approximate:** runs can start late, and schedules only run from `main`, so the hourly job can't be tried from `next` except by starting it by hand. GitHub also switches off schedules in repos with no activity for 60 days; whether the job's own writes to `data` count as activity is not confirmed. GitHub emails a warning first, and the freshness warning is the safety net.
 3. **Window hours as a phone setting:** the job scores with the default windows. Letting the phone use different hours means the page must redo the scoring from the hourly history. To decide in the data job batch plan (recommendation in `docs/status.md`).
 4. **Thin items:** a few trades set the hourly price, so suggested prices are rougher. The row says so.

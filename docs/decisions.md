@@ -41,3 +41,15 @@
 | The job runs its TypeScript directly with Node 22 | No extra library needed to run it. |
 | Requests to the Wiki go one at a time, 250 ms apart | Polite client; a few hundred history requests still finish in a couple of minutes. |
 | Vercel builds every branch except `data` and Dependabot's | `data` only holds results, and library-update PRs are covered by the checks. Claude's PR branches still get a preview. |
+
+### 2026-11-17 – Data job
+| Decision | Why |
+|---|---|
+| Window hours stay in the settings file in v1; revisit in the Personal batch | Owner's answer. Changing them on the phone means the phone must redo the scoring from raw history. |
+| At most 300 items get a history request each hour | Owner's answer. About 300 spaced-out requests, a little over a minute. |
+| Tax as in the spec (2% rounded down, 5m cap, nothing under 50 gp); only bonds are exempt for now | A web search agrees with the spec's numbers, but the Wiki's own page and its full exempt list couldn't be opened from the session. Taxing an exempt item only makes its profit look smaller. |
+| My buy offer is measured against the hourly "sold at once" price, my sell offer against the "bought at once" price | Those are the trades that would fill each offer. |
+| A night's "average" is the volume-weighted price over the whole night and following day; today's level is the last 24 hours | The 70% levels are "% below/above that average", applied to today's level. |
+| A night with no trades on a side counts as a miss; fewer than 5 measured nights, or prices too rare for a 70% level, means no score | Thin items aren't given prices the history can't support. |
+| Trend: straight-line slope of the daily level over 7 days; under 0.5% a day is flat. Falling halves the rank and raises the flag | Starting values, tuned in the backtest batch. |
+| Flag starting values: spike = today 25% above the usual level; thin = under 30 items a night in my buy window; tax-heavy = tax is at least half the margin; stale = a side hasn't traded for 6 hours | Starting values, all in `shared/settings.ts`. |
