@@ -14,7 +14,10 @@ on:
   schedule:
     # 7 minutes past every hour (UTC; the minute is all that matters). Off the
     # hour on purpose: GitHub's schedules are busiest and latest at :00.
-    - cron: '7 * * * *'
+    # Written as "*/1" (same times as "*") on 2026-11-17: the first version
+    # never fired a scheduled run, and a changed expression makes GitHub
+    # register the schedule afresh.
+    - cron: '7 */1 * * *'
   workflow_dispatch:
 
 # Never two runs at once; a late run waits for the one before it.
