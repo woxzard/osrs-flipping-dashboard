@@ -134,8 +134,3 @@ export function withoutEntry(personal: Personal, list: ListName, id: number): Pe
   if (!current.some((saved) => saved.id === id)) return personal;
   return { ...personal, [list]: current.filter((saved) => saved.id !== id) };
 }
-
-/** Items kept out of the picks: the ones I'm flipping and the ones I blocked. */
-export function hiddenIds(personal: Personal): Set<number> {
-  return new Set([...personal.flips, ...personal.block].map((saved) => saved.id));
-}

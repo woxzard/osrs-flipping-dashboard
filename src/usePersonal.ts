@@ -90,8 +90,26 @@ export function usePersonal() {
     [remove],
   );
 
+  const block = useCallback(
+    ({ id, name, icon }: ItemRef) => {
+      change((current) =>
+        withEntry(current, 'block', { id, name, icon, at: new Date().toISOString() }),
+      );
+      toast({
+        text: 'Blocked',
+        undo: () => change((current) => withoutEntry(current, 'block', id)),
+      });
+    },
+    [change, toast],
+  );
+
+  const unblock = useCallback(
+    (id: number) => remove('block', id, 'Shows in the picks again'),
+    [remove],
+  );
+
   return useMemo(
-    () => ({ personal, unsaved, startFlip, sold, watch, unwatch }),
-    [personal, unsaved, startFlip, sold, watch, unwatch],
+    () => ({ personal, unsaved, startFlip, sold, watch, unwatch, block, unblock }),
+    [personal, unsaved, startFlip, sold, watch, unwatch, block, unblock],
   );
 }

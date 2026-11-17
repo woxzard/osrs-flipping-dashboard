@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatExactGp, formatGp, formatPercent } from '../shared/format.ts';
 import type { HistoryFile, PublishedItem } from '../shared/picks.ts';
 import { fillWord, type Choice } from '../shared/rank.ts';
@@ -125,6 +125,51 @@ export function WatchButton({
   );
 }
 
+/**
+ * "Never show": kept apart from the other actions and quieter, so a slip of
+ * the thumb can't hit it; Undo covers the rest. Once blocked, says so with
+ * "Show again".
+ */
+export function BlockControl({
+  blocked,
+  onBlock,
+  onUnblock,
+}: {
+  blocked: boolean;
+  onBlock: () => void;
+  onUnblock: () => void;
+}) {
+  // The tapped button is replaced: put focus on what replaced it.
+  const control = useRef<HTMLButtonElement>(null);
+  const changed = useRef(false);
+  useEffect(() => {
+    if (changed.current) control.current?.focus({ preventScroll: true });
+  }, [blocked]);
+  const toggle = (action: () => void) => () => {
+    changed.current = true;
+    action();
+  };
+  return blocked ? (
+    <div className="card blocked-status">
+      <p>
+        <strong>Blocked:</strong> never shown in the picks.
+      </p>
+      <button type="button" className="button secondary" ref={control} onClick={toggle(onUnblock)}>
+        Show again
+      </button>
+    </div>
+  ) : (
+    <button
+      type="button"
+      className="link-button block-button"
+      ref={control}
+      onClick={toggle(onBlock)}
+    >
+      <span aria-hidden="true">⊘</span> Never show this item
+    </button>
+  );
+}
+
 export function ItemDetail({
   item,
   choice,
@@ -139,6 +184,9 @@ export function ItemDetail({
   watched,
   onWatch,
   onUnwatch,
+  blocked,
+  onBlock,
+  onUnblock,
 }: {
   item: PublishedItem;
   choice: Choice;
@@ -157,6 +205,9 @@ export function ItemDetail({
   watched: boolean;
   onWatch: () => void;
   onUnwatch: () => void;
+  blocked: boolean;
+  onBlock: () => void;
+  onUnblock: () => void;
 }) {
   const { state, retry } = useHistory(item.id);
   const perSlot = cashPerSlot(choice.cash, choice.freeSlots);
@@ -326,6 +377,10 @@ export function ItemDetail({
       <a className="wiki-link" href={wikiPageUrl(item.name)} target="_blank" rel="noreferrer">
         {item.name} on the OSRS Wiki <span aria-hidden="true">↗</span>
       </a>
+
+      <div className="detail-apart">
+        <BlockControl blocked={blocked} onBlock={onBlock} onUnblock={onUnblock} />
+      </div>
     </article>
   );
 }

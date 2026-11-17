@@ -92,6 +92,7 @@ export function Watchlist({
   choice,
   settings,
   flipping,
+  blocked,
   unsaved,
   onWatch,
   onUnwatch,
@@ -111,6 +112,8 @@ export function Watchlist({
   settings: Settings;
   /** Items I'm flipping, said on their rows. */
   flipping: ReadonlySet<number>;
+  /** Items I blocked: still watched, but never in the picks. */
+  blocked: ReadonlySet<number>;
   unsaved: boolean;
   onWatch: (item: ItemRef) => void;
   onUnwatch: (id: number) => void;
@@ -262,6 +265,7 @@ export function Watchlist({
                         {flipping.has(saved.id) && (
                           <span className="tag">You're flipping this</span>
                         )}
+                        {blocked.has(saved.id) && <span className="tag">Blocked</span>}
                         {remove(saved)}
                       </>
                     }

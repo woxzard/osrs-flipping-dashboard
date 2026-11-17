@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY,
-  hiddenIds,
   parsePersonal,
   withEntry,
   withoutEntry,
@@ -80,12 +79,5 @@ describe('changing the lists', () => {
     const undone = withEntry(removed, 'flips', flip(2, '2026-11-17T02:00:00Z'));
     expect(undone.flips.map((f) => f.id)).toEqual([3, 2, 1]);
     expect(withoutEntry(EMPTY, 'flips', 9)).toBe(EMPTY);
-  });
-
-  it('keeps flipped and blocked items out of the picks, not watched ones', () => {
-    let personal = withEntry(EMPTY, 'flips', flip(1, '2026-11-17T01:00:00Z'));
-    personal = withEntry(personal, 'block', saved(2, '2026-11-17T01:00:00Z'));
-    personal = withEntry(personal, 'watch', saved(3, '2026-11-17T01:00:00Z'));
-    expect([...hiddenIds(personal)].sort()).toEqual([1, 2]);
   });
 });
