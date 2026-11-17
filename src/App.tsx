@@ -34,6 +34,9 @@ import { MyFlips } from './Lists.tsx';
 import { Watchlist } from './Watchlist.tsx';
 import type { Flip, Offer } from './personal.ts';
 import { usePersonal, type ItemRef } from './usePersonal.ts';
+import { useMyHours } from './useMyHours.ts';
+import { formatHours, loadHours, storeHours } from './hours.ts';
+import type { WindowHours } from '../shared/rescore.ts';
 
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { TabBar } from './TabBar.tsx';
@@ -180,6 +183,9 @@ function readPlace() {
     itemId: readItemId(window.location.search),
   };
 }
+
+/** An empty set that keeps its identity between renders. */
+const NONE: ReadonlySet<number> = new Set();
 
 const VOLUME_NAME = { all: '', high: 'High-volume ', low: 'Low-volume ' } as const;
 
@@ -398,6 +404,19 @@ function Picks({
   );
 }
 
+/** While the phone scores with my hours: how far it is. */
+function ScoringProgress({ done, total }: { done: number; total: number }) {
+  return (
+    <section className="card" aria-labelledby="scoring-title">
+      <h2 id="scoring-title">Scoring with your night hours</h2>
+      <p>
+        {done} of {total} items. The phone does this once after each hourly update.
+      </p>
+      <progress className="progress" max={total} value={done} aria-labelledby="scoring-title" />
+    </section>
+  );
+}
+
 function PicksStates({ state, retry }: { state: State; retry: () => void }) {
   return (
     <>
@@ -445,6 +464,7 @@ function Detail({
   blocked,
   onBlock,
   onUnblock,
+  unscorable,
   saved,
 }: {
   itemId: number;
@@ -462,6 +482,8 @@ function Detail({
   blocked: boolean;
   onBlock: (item: ItemRef) => void;
   onUnblock: () => void;
+  /** In the update, but not scorable with my night hours. */
+  unscorable: boolean;
   /** The item as on my lists, for when the update doesn't have it. */
   saved?: ItemRef;
 }) {
@@ -483,8 +505,9 @@ function Detail({
         <section className="card" aria-labelledby="gone-title">
           <h2 id="gone-title">{known?.name ?? 'Not in the latest update'}</h2>
           <p>
-            {known ? 'Not in the latest update: it' : 'This item'} isn't among the flips the last
-            hourly update looked at.
+            {unscorable
+              ? "Your night hours don't leave enough trading in its history to score it this hour."
+              : `${known ? 'Not in the latest update: it' : 'This item'} isn't among the flips the last hourly update looked at.`}
           </p>
         </section>
         {flip && <FlipStatus flip={flip} canFlip={false} onFlip={() => {}} onSold={onSold} />}
@@ -523,8 +546,35 @@ function Detail({
   );
 }
 
+/** My night hours, kept on this phone; null means the job's. */
+function useHours() {
+  const [hours, setHours] = useState<WindowHours | null>(loadHours);
+  const [unsaved, setUnsaved] = useState(false);
+  const change = useCallback((next: WindowHours | null) => {
+    setHours(next);
+    setUnsaved(!storeHours(next));
+  }, []);
+  return { hours, unsaved, change };
+}
+
 export function App() {
-  const { state, retry } = usePicks();
+  const { state: loaded, retry: reload } = usePicks();
+  const { hours, unsaved: hoursUnsaved, change: setHours } = useHours();
+  // With my own hours, the picks are scored here first.
+  const mine = useMyHours(loaded.status === 'ready' ? loaded.picks : null, hours);
+  const state = useMemo<State>(() => {
+    switch (mine.state.status) {
+      case 'ready':
+        return { status: 'ready', picks: mine.state.picks };
+      case 'scoring':
+        return { status: 'loading' };
+      case 'error':
+        return { status: 'error' };
+      default:
+        return loaded;
+    }
+  }, [mine.state, loaded]);
+  const retry = mine.state.status === 'error' ? mine.retry : reload;
   const [choice, setChoice] = useChoice();
   const { view, itemId, open, close, showView } = useNav(state.status !== 'loading');
   const settings = state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS;
@@ -534,6 +584,7 @@ export function App() {
     () => new Set(personal.watch.map((saved) => saved.id)),
     [personal.watch],
   );
+  const unscored = mine.state.status === 'ready' ? mine.state.unscored : NONE;
   const published = useMemo(
     () => (state.status === 'ready' ? state.picks.items.filter(isPublishedItem) : []),
     [state],
@@ -571,6 +622,11 @@ export function App() {
           ) : (
             <p className="muted">Old School RuneScape</p>
           )}
+          {mine.state.status === 'ready' && hours && (
+            <p className="muted small">
+              Scored on this phone with your night hours: {formatHours(hours)}.
+            </p>
+          )}
         </header>
 
         <Controls
@@ -580,7 +636,11 @@ export function App() {
           onChange={setChoice}
         />
 
-        <PicksStates state={state} retry={retry} />
+        {mine.state.status === 'scoring' ? (
+          <ScoringProgress done={mine.state.done} total={mine.state.total} />
+        ) : (
+          <PicksStates state={state} retry={retry} />
+        )}
 
         {state.status === 'ready' && (
           <Picks
@@ -619,6 +679,7 @@ export function App() {
           shown={onList && view === 'watch'}
           watch={personal.watch}
           watched={watchedIds}
+          unscored={unscored}
           items={published}
           status={state.status}
           retry={retry}
@@ -635,7 +696,10 @@ export function App() {
       </div>
       <div hidden={!onList || view !== 'settings'}>
         <SettingsScreen
-          settings={settings}
+          jobSettings={loaded.status === 'ready' ? settingsFor(loaded.picks.settings) : SETTINGS}
+          myHours={hours}
+          hoursUnsaved={hoursUnsaved}
+          onHours={setHours}
           blocked={personal.block}
           unsaved={unsaved}
           onUnblock={unblock}
@@ -661,6 +725,7 @@ export function App() {
           blocked={blockedIds.has(itemId)}
           onBlock={block}
           onUnblock={() => unblock(itemId)}
+          unscorable={unscored.has(itemId)}
           saved={
             flipOf(itemId) ??
             personal.watch.find((entry) => entry.id === itemId) ??

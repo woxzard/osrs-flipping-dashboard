@@ -28,8 +28,9 @@ test('the bottom bar reaches every tab, and the address keeps it', async ({ page
 
   await tab(page, 'Settings').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await expect(page.getByText('Buy while you sleep22:00 to 07:00')).toBeVisible();
-  await expect(page.getByText('Sell the next day07:00 to 22:00')).toBeVisible();
+  await expect(page.getByLabel('Start buying (bedtime)')).toHaveValue('22');
+  await expect(page.getByLabel('Start selling (wake up)')).toHaveValue('7');
+  await expect(page.getByLabel('Stop selling')).toHaveValue('22');
 
   // Refresh keeps the tab; back walks the tabs in reverse, then to the picks.
   await page.reload();
