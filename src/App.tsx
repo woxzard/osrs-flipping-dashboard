@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { PicksFile } from '../shared/picks.ts';
+import type { PicksFile, PublishedItem } from '../shared/picks.ts';
 import { formatGp } from '../shared/format.ts';
 import {
   FEW_PICKS,
@@ -7,6 +7,7 @@ import {
   rankPicks,
   settingsFor,
   type Choice,
+  type RankedPick,
   type Ranking,
 } from '../shared/rank.ts';
 import { cashPerSlot } from '../shared/scoring.ts';
@@ -16,7 +17,7 @@ import { BackButton } from './BackButton.tsx';
 import { Controls } from './Controls.tsx';
 import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
-import { ItemDetail } from './ItemDetail.tsx';
+import { FlipStatus, ItemDetail } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
 import {
   itemHref,
@@ -30,6 +31,9 @@ import {
   type View,
 } from './route.ts';
 import { MyFlips, Watchlist } from './Lists.tsx';
+import { hiddenIds, type Flip, type Offer } from './personal.ts';
+import { usePersonal } from './usePersonal.ts';
+
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { TabBar } from './TabBar.tsx';
 
@@ -266,21 +270,41 @@ function usePicks() {
 function Picks({
   picks,
   choice,
+  hidden,
   onShowAll,
   onOpen,
+  onFlip,
 }: {
   picks: PicksFile;
   choice: Choice;
+  /** Items kept out of the picks: the ones I'm flipping or blocked. */
+  hidden: ReadonlySet<number>;
   onShowAll: () => void;
   onOpen: (id: number) => void;
+  onFlip: (pick: RankedPick) => void;
 }) {
   const settings = useMemo(() => settingsFor(picks.settings), [picks.settings]);
   const ranking = useMemo(
+    () =>
+      rankPicks(
+        picks.items.filter((item) => !hidden.has(item.id)),
+        choice,
+        settings,
+      ),
+    [picks.items, hidden, choice, settings],
+  );
+  // How many of my hidden items would be in this list: only those are worth a word.
+  const everything = useMemo(
     () => rankPicks(picks.items, choice, settings),
     [picks.items, choice, settings],
   );
+  const hiddenHere = everything.qualifying - ranking.qualifying;
+  const hiddenNote =
+    hiddenHere === 1 ? "1 item you're flipping" : `${hiddenHere} items you're flipping`;
+  // A ticked row disappears: keep keyboard and screen-reader focus on the list.
+  const list = useRef<HTMLOListElement>(null);
 
-  if (ranking.published === 0) {
+  if (!picks.items.some(isPublishedItem)) {
     return (
       <section className="card" aria-labelledby="empty-title">
         <h2 id="empty-title">Nothing qualifies right now</h2>
@@ -292,7 +316,10 @@ function Picks({
   const short = ranking.picks.length < FEW_PICKS && (
     <section className="card" aria-labelledby="short-title">
       <h2 id="short-title">{ranking.picks.length === 0 ? 'Nothing qualifies' : 'A short list'}</h2>
-      <p>{shortListReason(ranking, choice)}</p>
+      <p>
+        {shortListReason(ranking, choice)}
+        {hiddenHere > 0 && ` Also not shown: ${hiddenNote} (My flips).`}
+      </p>
       {choice.volume !== 'all' && ranking.qualifyingAll > ranking.qualifying && (
         <button type="button" className="button" onClick={onShowAll}>
           Show all volumes
@@ -314,7 +341,7 @@ function Picks({
       </p>
       {short}
       {ranking.picks.length > 0 && (
-        <ol className="list" aria-label="Picks">
+        <ol className="list" aria-label="Picks" ref={list} tabIndex={-1}>
           {ranking.picks.map((pick) => (
             <li key={pick.item.id}>
               <PickRow
@@ -322,10 +349,17 @@ function Picks({
                 settings={settings}
                 href={itemHref(window.location.search, pick.item.id)}
                 onOpen={() => onOpen(pick.item.id)}
+                onFlip={() => {
+                  onFlip(pick);
+                  list.current?.focus({ preventScroll: true });
+                }}
               />
             </li>
           ))}
         </ol>
+      )}
+      {hiddenHere > 0 && ranking.picks.length >= FEW_PICKS && (
+        <p className="note">Not shown: {hiddenNote} (My flips).</p>
       )}
       <p className="note">
         <strong>Nights:</strong> on how many of the last {settings.nights} nights both your buy and
@@ -373,6 +407,9 @@ function Detail({
   choice,
   backLabel,
   onBack,
+  flip,
+  onFlip,
+  onSold,
 }: {
   itemId: number;
   state: State;
@@ -380,6 +417,9 @@ function Detail({
   choice: Choice;
   backLabel: string;
   onBack: () => void;
+  flip?: Flip;
+  onFlip: (item: PublishedItem, offer: Offer) => void;
+  onSold: () => void;
 }) {
   if (state.status !== 'ready') {
     return (
@@ -395,9 +435,13 @@ function Detail({
       <>
         <BackButton label={backLabel} onBack={onBack} />
         <section className="card" aria-labelledby="gone-title">
-          <h2 id="gone-title">Not in the latest update</h2>
-          <p>This item isn't among the flips the last hourly update looked at.</p>
+          <h2 id="gone-title">{flip ? flip.name : 'Not in the latest update'}</h2>
+          <p>
+            {flip ? 'Not in the latest update: it' : 'This item'} isn't among the flips the last
+            hourly update looked at.
+          </p>
         </section>
+        {flip && <FlipStatus flip={flip} canFlip={false} onFlip={() => {}} onSold={onSold} />}
       </>
     );
   }
@@ -410,6 +454,9 @@ function Detail({
       backLabel={backLabel}
       onBack={onBack}
       notice={<StaleNotice generatedAt={state.picks.generatedAt} />}
+      flip={flip}
+      onFlip={(offer) => onFlip(item, offer)}
+      onSold={onSold}
     />
   );
 }
@@ -420,6 +467,18 @@ export function App() {
   const { view, itemId, open, close, showView } = useNav(state.status !== 'loading');
   const settings = state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS;
   const onList = itemId === null;
+  const { personal, unsaved, startFlip, sold } = usePersonal();
+  const hidden = useMemo(() => hiddenIds(personal), [personal]);
+  const sellNow = useMemo(
+    () =>
+      new Map(
+        state.status === 'ready'
+          ? state.picks.items.filter(isPublishedItem).map((item) => [item.id, item.sellPrice])
+          : [],
+      ),
+    [state],
+  );
+  const flipOf = (id: number | null) => personal.flips.find((flip) => flip.id === id);
 
   // Say which screen this is (an item names itself).
   useEffect(() => {
@@ -455,14 +514,31 @@ export function App() {
           <Picks
             picks={state.picks}
             choice={choice}
+            hidden={hidden}
             onShowAll={() => setChoice({ ...choice, volume: 'all' })}
             onOpen={open}
+            onFlip={(pick) =>
+              startFlip(pick.item, {
+                buyPrice: pick.item.buyPrice,
+                sellPrice: pick.item.sellPrice,
+                quantity: pick.quantity,
+                profit: pick.profit,
+              })
+            }
           />
         )}
       </div>
 
       <div hidden={!onList || view !== 'flips'}>
-        <MyFlips onShowPicks={() => showView('picks')} />
+        <MyFlips
+          shown={onList && view === 'flips'}
+          flips={personal.flips}
+          sellNow={sellNow}
+          unsaved={unsaved}
+          onOpen={open}
+          onSold={sold}
+          onShowPicks={() => showView('picks')}
+        />
       </div>
       <div hidden={!onList || view !== 'watch'}>
         <Watchlist onShowPicks={() => showView('picks')} />
@@ -479,6 +555,9 @@ export function App() {
           choice={choice}
           backLabel={VIEW_NAME[view]}
           onBack={close}
+          flip={flipOf(itemId)}
+          onFlip={startFlip}
+          onSold={() => sold(itemId)}
         />
       )}
 
@@ -486,6 +565,7 @@ export function App() {
 
       <TabBar
         current={view}
+        counts={{ flips: personal.flips.length }}
         search={writeChoice(choice, window.location.search)}
         onSelect={showView}
       />

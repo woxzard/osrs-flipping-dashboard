@@ -10,12 +10,15 @@ export function PickRow({
   settings,
   href,
   onOpen,
+  onFlip,
 }: {
   pick: RankedPick;
   settings: Settings;
   /** The item's own address, so the row is a real link (new tab, copy link). */
   href: string;
   onOpen: () => void;
+  /** "I'm flipping this": hides the item from the picks. */
+  onFlip: () => void;
 }) {
   const { item } = pick;
   // Out of the full count even for a newer item, as the ranking does (docs/spec.md §5).
@@ -81,6 +84,16 @@ export function PickRow({
           ))}
         </ul>
       )}
+      <div className="pick-actions">
+        <button
+          type="button"
+          className="button secondary"
+          aria-label={`I'm flipping this: ${item.name}`}
+          onClick={onFlip}
+        >
+          I'm flipping this
+        </button>
+      </div>
     </article>
   );
 }
