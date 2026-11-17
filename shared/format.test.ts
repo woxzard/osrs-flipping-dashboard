@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatGp } from './format.ts';
+import { formatExactGp, formatGp, formatPercent } from './format.ts';
 
 describe('formatGp', () => {
   it.each([
@@ -29,5 +29,39 @@ describe('formatGp', () => {
     expect(formatGp(-35_500)).toBe('-35.5k');
     expect(formatGp(-0.4)).toBe('0');
     expect(formatGp(Number.NaN)).toBe('–');
+  });
+});
+
+describe('formatExactGp', () => {
+  it.each([
+    [0, '0'],
+    [3_962, '3,962'],
+    [13_751_666, '13,751,666'],
+    [2_147_483_647, '2,147,483,647'],
+  ])('shows %d as %s', (amount, text) => {
+    expect(formatExactGp(amount)).toBe(text);
+  });
+
+  it('handles bad input', () => {
+    expect(formatExactGp(-0.4)).toBe('0');
+    expect(formatExactGp(Number.NaN)).toBe('–');
+  });
+});
+
+describe('formatPercent', () => {
+  it.each([
+    [0.04341, '4.3%'],
+    [0.0499, '4.9%'],
+    [0.025, '2.5%'],
+    [0.001, '0.1%'],
+    [0, '0.0%'],
+    [1, '100.0%'],
+    [-0.0125, '-1.2%'],
+  ])('shows %d as %s', (share, text) => {
+    expect(formatPercent(share)).toBe(text);
+  });
+
+  it('handles bad input', () => {
+    expect(formatPercent(Number.POSITIVE_INFINITY)).toBe('–');
   });
 });
