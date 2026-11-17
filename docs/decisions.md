@@ -57,3 +57,13 @@
 | The run fails, publishing nothing, when: a list request fails; the lists cover under 2,000 items; the newest trade is over 2 hours old; under 100 candidates or under 50 scored items; more than 10% of history requests fail | "The Wiki failed or returned nonsense". A few failed history requests only drop those items. |
 | The results file lists every scored candidate, best first for 50m in one slot; until the dashboard batch the page shows the first ten | The page has no cash or slot controls yet. Unprofitable candidates stay in the file, at the bottom, for the watchlist later. |
 | Each item's history file keeps 16 days of hours as short rows | Covers the 14 measured nights plus today; about 12 KB per item. |
+
+### 2026-11-17 – Data job: fixes after the first real run
+| Decision | Why |
+|---|---|
+| Bonds are never picked (`notFlippableIds` in the settings file) | Owner's answer. The real run ranked the bond first, but a bond bought on the Grand Exchange is untradeable and costs 10% to make tradeable again. |
+| Tax-heavy flag: tax is at least 60% of the margin before tax (was 50%), and only when there is a margin | Owner's answer. At 50% the real run flagged 229 of 290 items; at 60% it flags 166 and none of the top twenty. To tune further in the backtest batch. |
+| Fill chance is counted out of 14 nights even when an item has less history | Owner's answer; matches the spec. 4 good nights of 5 no longer ranks like 80%. |
+| Tax exempt list: the Wiki's full list (48 item ids), checked 2026-11-17 | Rate, rounding, 5m cap and 50 gp floor also confirmed on the Wiki's Grand Exchange page. |
+| Hours of history in an unexpected shape are dropped; trade times that aren't numbers are ignored by the stuck-prices check | Code review: one broken value could otherwise publish an item with no price, or let old prices through as fresh. |
+| Left for later (code review, not bugs today): the trend only sees finished nights, so a sudden crash takes up to two days to raise "falling"; no retry when a Wiki request fails (the next hour retries); the windows must fit in 24 hours from the buy start | To weigh in the backtest and Personal batches. |

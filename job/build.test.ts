@@ -17,8 +17,8 @@ describe('buildResults on the saved samples', () => {
   it('scores every item that has history, best first', async () => {
     const { picks, histories } = await run();
     expect(picks.generatedAt).toBe(capturedAt.toISOString());
-    expect(picks.items).toHaveLength(8);
-    expect(picks.items[0]).toMatchObject({ id: 13190, name: 'Old school bond', taxPerItem: 0 });
+    expect(picks.items).toHaveLength(7);
+    expect(picks.items[0]).toMatchObject({ id: 4151, name: 'Abyssal whip' });
     expect(picks.items.map((item) => item.id).sort()).toEqual(
       histories.map((history) => history.id).sort(),
     );
@@ -28,7 +28,50 @@ describe('buildResults on the saved samples', () => {
   it('publishes a file the page accepts', async () => {
     const { picks } = await run();
     const reread = parsePicksFile(JSON.parse(JSON.stringify(picks)));
-    expect(reread.items[0]).toMatchObject({ limit: 100, icon: 'Old school bond.png' });
+    expect(reread.items[0]).toMatchObject({ limit: 70, icon: 'Abyssal whip.png' });
+  });
+
+  it('never picks the bond: one bought on the Grand Exchange cannot be sold on', async () => {
+    const asked: number[] = [];
+    const hourly: Source['hourly'] = (id) => {
+      asked.push(id);
+      return source.hourly(id);
+    };
+    const { picks } = await run({ hourly });
+    expect(source.historyIds).toContain(13190);
+    expect(asked).not.toContain(13190);
+    expect(picks.items.map((item) => item.id)).not.toContain(13190);
+  });
+
+  it('drops hours of history that are not in the expected shape', async () => {
+    const clean = await run();
+    const hourly: Source['hourly'] = async (id) => {
+      const history = await source.hourly(id);
+      const broken = [
+        {
+          timestamp: 1,
+          avgHighPrice: '650000',
+          highPriceVolume: 5,
+          avgLowPrice: 1,
+          lowPriceVolume: 5,
+        },
+        { timestamp: 2, avgHighPrice: 650_000, avgLowPrice: 640_000, lowPriceVolume: 5 },
+        {
+          timestamp: 3,
+          avgHighPrice: Number.NaN,
+          highPriceVolume: 5,
+          avgLowPrice: null,
+          lowPriceVolume: 0,
+        },
+      ] as unknown as typeof history.data;
+      return { ...history, data: [...broken, ...history.data] };
+    };
+    const { picks } = await run({ hourly });
+    expect(picks.items).toEqual(clean.picks.items);
+    for (const item of picks.items) {
+      expect(Number.isFinite(item.buyPrice)).toBe(true);
+      expect(Number.isFinite(item.sellPrice)).toBe(true);
+    }
   });
 
   it('keeps about 16 days of hourly history per item, oldest first', async () => {
@@ -47,7 +90,7 @@ describe('buildResults on the saved samples', () => {
       return source.hourly(id);
     };
     await run({ hourly }, capturedAt, { ...SAMPLE_LIMITS, minCandidates: 1, minScored: 1 });
-    expect(asked).toHaveLength(8);
+    expect(asked).toHaveLength(7);
 
     asked.length = 0;
     await buildResults(
@@ -74,7 +117,7 @@ describe('buildResults on the saved samples', () => {
     const ids = picks.items.map((item) => item.id);
     expect(ids).not.toContain(4151);
     expect(ids).not.toContain(536);
-    expect(ids).toHaveLength(6);
+    expect(ids).toHaveLength(5);
   });
 });
 
@@ -100,6 +143,18 @@ describe('buildResults when the Wiki fails or returns nonsense', () => {
     await expect(run({}, later)).rejects.toThrow('hours old');
   });
 
+  it('still notices stuck prices when a trade time is not a number', async () => {
+    const later = new Date(capturedAt.getTime() + 5 * 3_600_000);
+    const latest = await source.latest();
+    const odd = {
+      data: {
+        ...latest.data,
+        4151: { ...latest.data[4151]!, highTime: 'n/a' as unknown as number },
+      },
+    };
+    await expect(run({ latest: async () => odd }, later)).rejects.toThrow('hours old');
+  });
+
   it('fails when too few items qualify or can be scored', async () => {
     await expect(run({}, capturedAt, { ...SAMPLE_LIMITS, minCandidates: 9 })).rejects.toThrow(
       'candidates',
@@ -114,7 +169,7 @@ describe('buildResults when the Wiki fails or returns nonsense', () => {
       ...SAMPLE_LIMITS,
       maxHistoryFailures: 0.2,
     });
-    expect(picks.items).toHaveLength(7);
+    expect(picks.items).toHaveLength(6);
     expect(summary).toContain('1 history requests failed');
   });
 
@@ -130,13 +185,13 @@ describe('writeResults', () => {
     try {
       const results = await run();
       await writeResults(folder, results);
-      expect((await readdir(join(folder, 'history'))).length).toBe(8);
+      expect((await readdir(join(folder, 'history'))).length).toBe(7);
 
       const fewer = { ...results, histories: results.histories.slice(0, 2) };
       await writeResults(folder, fewer);
       expect((await readdir(join(folder, 'history'))).length).toBe(2);
       const picks: unknown = JSON.parse(await readFile(join(folder, 'picks.json'), 'utf8'));
-      expect(parsePicksFile(picks).items).toHaveLength(8);
+      expect(parsePicksFile(picks).items).toHaveLength(7);
     } finally {
       await rm(folder, { recursive: true, force: true });
     }

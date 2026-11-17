@@ -52,6 +52,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const isPrice = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
+const isCount = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const isTime = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+/** One hour of history in the shape the scoring expects; anything else is dropped. */
+const isHourPoint = (point: unknown): point is TimeseriesResponse['data'][number] =>
+  isRecord(point) &&
+  isTime(point.timestamp) &&
+  (point.avgHighPrice === null || isPrice(point.avgHighPrice)) &&
+  (point.avgLowPrice === null || isPrice(point.avgLowPrice)) &&
+  isCount(point.highPriceVolume) &&
+  isCount(point.lowPriceVolume);
 
 function nonsense(what: string): never {
   throw new Error(`The Wiki returned nonsense: ${what}. Nothing published.`);
@@ -80,21 +93,23 @@ export async function buildResults(
   }
   const newestTrade = Math.max(
     0,
-    ...Object.values(latest.data).map((price) =>
-      Math.max(price?.highTime ?? 0, price?.lowTime ?? 0),
+    ...Object.values(latest.data).flatMap((price) =>
+      isRecord(price) ? [price.highTime, price.lowTime].filter(isTime) : [],
     ),
   );
   if (nowSeconds - newestTrade > limits.maxPriceAgeHours * HOUR) {
     nonsense(`the newest trade is ${Math.round((nowSeconds - newestTrade) / HOUR)} hours old`);
   }
 
-  // Candidates: a buy limit, traded both ways in the last 24 hours, and both
-  // a buy and a sell price right now. The most-traded (by gp) come first.
+  // Candidates: can be flipped, a buy limit, traded both ways in the last 24
+  // hours, and both a buy and a sell price right now. The most-traded (by gp)
+  // come first.
   const candidates = mapping
     .flatMap((item) => {
       if (!isRecord(item) || typeof item.id !== 'number' || typeof item.name !== 'string')
         return [];
       if (source.historyIds && !source.historyIds.includes(item.id)) return [];
+      if (settings.notFlippableIds.includes(item.id)) return [];
       const traded = day.data[item.id];
       const price = latest.data[item.id];
       if (!isPrice(item.limit) || !traded || !price) return [];
@@ -121,9 +136,7 @@ export async function buildResults(
     try {
       const response = await source.hourly(item.id);
       if (!isRecord(response) || !Array.isArray(response.data)) throw new Error('no data');
-      points = response.data
-        .filter((point) => isRecord(point) && typeof point.timestamp === 'number')
-        .sort((a, b) => a.timestamp - b.timestamp);
+      points = response.data.filter(isHourPoint).sort((a, b) => a.timestamp - b.timestamp);
     } catch (error) {
       failed += 1;
       console.warn(`history for ${item.name} (${item.id}) failed: ${String(error)}`);

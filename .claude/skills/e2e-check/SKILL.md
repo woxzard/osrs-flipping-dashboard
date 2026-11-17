@@ -37,3 +37,5 @@ description: How to check this project end to end the way the owner uses it - ru
 - A real run of the job (`node job/run.ts --out /tmp/out`) needs `prices.runescape.wiki` and `NODE_USE_ENV_PROXY=1`, and makes about 300 spaced-out requests: do it once per batch that changes the job, not in a loop.
 - Node's `fetch` ignores the cloud session's proxy unless `NODE_USE_ENV_PROXY=1` is set (`make samples` sets it); without it the price site looks unreachable (`ENOTFOUND`).
 - Playwright's iPhone profiles default to WebKit, which cloud sessions don't have: the config forces Chromium. Real Safari behaviour is the owner's to confirm on the phone.
+- The bond sample (13190) is never a candidate (bonds can't be flipped), so the sample run scores 7 of the 8 items with history; the bond's history is still used by the scoring unit tests.
+- To look at a real run's output without new requests, re-rank the saved `picks.json` with `sizePick` from `shared/scoring.ts` in a short script.
