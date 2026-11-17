@@ -11,10 +11,10 @@ import {
 } from '../shared/rank.ts';
 import { cashPerSlot } from '../shared/scoring.ts';
 import { SETTINGS } from '../shared/settings.ts';
-import { formatAgo, formatManilaTime } from '../shared/time.ts';
 import { loadStoredChoice, readChoice, storeChoice, writeChoice } from './choice.ts';
 import { BackButton } from './BackButton.tsx';
 import { Controls } from './Controls.tsx';
+import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
 import { ItemDetail } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
@@ -141,28 +141,53 @@ function usePicks() {
     setAttempt((n) => n + 1);
   }, []);
 
-  return { state, retry };
-}
-
-/** The current time, refreshed often enough for "23 min ago" to stay true. */
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
+  // Quietly fetch again when the page comes back into view, and every few
+  // minutes while the shown file is over two hours old: an open tab mustn't
+  // keep an old copy and blame the hourly job for it. Failures change nothing.
+  const latest = useRef(state);
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(timer);
+    latest.current = state;
+  }, [state]);
+  useEffect(() => {
+    let lastCheck = Date.now();
+    let controller: AbortController | undefined;
+    const refresh = () => {
+      const current = latest.current;
+      if (current.status !== 'ready' || Date.now() - lastCheck < 60_000) return;
+      lastCheck = Date.now();
+      controller?.abort();
+      controller = new AbortController();
+      loadPicks(controller.signal).then(
+        (picks) => {
+          if (picks && picks.generatedAt !== current.picks.generatedAt) {
+            setState({ status: 'ready', picks });
+          }
+        },
+        () => {},
+      );
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    const timer = setInterval(() => {
+      const current = latest.current;
+      if (
+        document.visibilityState === 'visible' &&
+        current.status === 'ready' &&
+        isStale(new Date(current.picks.generatedAt), new Date())
+      ) {
+        refresh();
+      }
+    }, 5 * 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      controller?.abort();
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
-  return now;
-}
 
-function Freshness({ generatedAt }: { generatedAt: string }) {
-  const now = useNow();
-  const at = new Date(generatedAt);
-  return (
-    <p className="muted">
-      Updated {formatAgo(at, now)} · <time dateTime={generatedAt}>{formatManilaTime(at)}</time>{' '}
-      Manila time
-    </p>
-  );
+  return { state, retry };
 }
 
 function Picks({
@@ -308,6 +333,7 @@ function Detail({
       settings={settingsFor(state.picks.settings)}
       generatedAt={state.picks.generatedAt}
       onBack={onBack}
+      notice={<StaleNotice generatedAt={state.picks.generatedAt} />}
     />
   );
 }
