@@ -15,7 +15,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "e2e": "playwright test",
-    "samples": "node job/capture-samples.ts"
+    "samples": "node job/capture-samples.ts",
+    "samples:expected": "node job/run.ts --samples samples --out samples/expected",
+    "job": "node job/run.ts"
   },
   "dependencies": {
     "react": "^19.3.1",

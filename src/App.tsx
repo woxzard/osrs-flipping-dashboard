@@ -9,6 +9,9 @@ type State =
   | { status: 'error' }
   | { status: 'ready'; picks: PicksFile };
 
+/** The job lists every candidate, best first; the page shows the top ones. */
+const TOP_PICKS = 10;
+
 function usePicks() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -95,7 +98,7 @@ export function App() {
       {state.status === 'ready' &&
         (state.picks.items.length > 0 ? (
           <ul className="list" aria-label="Picks">
-            {state.picks.items.map((item) => (
+            {state.picks.items.slice(0, TOP_PICKS).map((item) => (
               <li key={item.id}>{item.name}</li>
             ))}
           </ul>

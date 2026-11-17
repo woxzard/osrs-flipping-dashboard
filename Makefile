@@ -7,7 +7,8 @@
 #   make check      lint + format check + unit tests (required)
 #   make build      production build of the page (required)
 #   make e2e        end-to-end checks on saved samples (run make build first)
-#   make samples    refresh the saved price-API responses in samples/
+#   make samples    refresh the saved price-API responses in samples/ and the
+#                   job's expected result for them
 #   make dev        run the page locally
 
 .PHONY: setup check build e2e samples dev
@@ -33,3 +34,4 @@ e2e:
 # cloud session's proxy when told to.
 samples:
 	NODE_USE_ENV_PROXY=1 npm run samples
+	npm run samples:expected
