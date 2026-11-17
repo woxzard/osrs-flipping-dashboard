@@ -2,28 +2,29 @@
 
 Read this at the start of every session. Updated at the end of each batch and each release. How we work: `docs/workflow.md`.
 
-_Last updated: 2026-11-17._
+_Last updated: 2026-11-17 (Dashboard batch on `next`)._
 
 ## Where we are
-- **Released on `main`:** setup, foundation and the **data job batch** (release PR #10, merged 2026-11-17). The hourly job runs from `main` at 7 minutes past every hour and publishes to the `data` branch.
-- **First published run (hand-started, 2026-11-17 12:37 Manila):** 290 items in `picks.json`, 290 history files, no bond. Top ten: Purple sweets, Uncut dragonstone, Dragonfire ward, Masori mask, Hydra leather, Crimson kisten, Ancient godsword, Pegasian boots, Red dragonhide, Sanfew serum(4). The page still shows the ten names only; prices and controls come with the dashboard batch.
-- **On `next`, not released:** nothing.
-- **Vercel:** connected. **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (not yet confirmed by the owner).
+- **Released on `main`:** setup, foundation and the **data job batch** (release PR #10, merged 2026-11-17). The hourly job is meant to run from `main` at 7 minutes past every hour and publish to the `data` branch.
+- **On `next`, waiting for the owner's test:** the **Dashboard batch** (PRs #13–#17), release PR `next` → `main` open. Controls (cash chips and custom amount, free slots, High / Low / All), the picks list with icons, item detail with a 14-day chart and back to the same scroll position, the stale-data warning.
+- **Hourly job stalled:** only the hand-started run (2026-11-17 12:37 Manila) has ever run. No scheduled run had started by 19:57 Manila, although the workflow is active on `main`. The page's stale-data warning shows this. See "Open questions" 1.
+- **Vercel:** connected; GitHub reports successful Vercel deployments for the batch's PRs. **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (not yet confirmed by the owner; cloud sessions can't open Vercel addresses).
 - No `owner-ok` is pre-approved: high-risk PRs wait for the owner again.
 
 ## Next up
-1. The **Dashboard batch** (`docs/plan.md`): send its plan first.
-2. At the start of that session, check that the scheduled runs kept going (Actions → Hourly data: a green run every hour, `data` branch updated within the last hour or so).
+1. The owner tests the Dashboard release PR on the phone and merges it (merge commit).
+2. Get the hourly schedule running (question 1).
+3. Then the **Personal batch** (`docs/plan.md`): send its plan first.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site and the Wiki.
 
 ## Open questions for the owner
-1. **Does the `next` preview address above open on your phone?**
-2. **Does the released page show the ten item names and a fresh "Updated" time on your phone?** (The published file is fine; only you can see the real page.)
+1. **The hourly schedule never started.** Start a run by hand (Actions → Hourly data → Run workflow) to refresh the data. If timed runs still don't appear an hour or two after that, the likely fix is a small change to the workflow on `main` so GitHub registers the schedule again (`risk:high`, needs your OK).
+2. **Does the `next` preview address above open on your phone?**
 
-Seen in the real run, for the dashboard and backtest batches (nothing to decide now):
-- No pick ever shows more than about 10 of 14 nights. The buy and sell prices are each reached on about 70% of nights, so both together land at 6–10 of 14. The dashboard should not present 8 of 14 as weak.
-- Suggested buy prices can sit a few percent under the live price for a rising item (Masori mask: buy at 13.69m, trading at 14.6m). That is the method working (wait for the dip), but such offers fill less often.
-- The top ten is a mix: four cheap stackables and six items over 8m, sized for 50m in one slot.
+Seen in the real run, for the backtest batch (nothing to decide now):
+- No pick ever shows more than about 10 of 14 nights; the page now words 8–9 as "typical".
+- Rising items' buy prices sit a few percent under the live price; the item screen now says how far ("Your buy is 6% under").
+- Tax-heavy (60%) shows on about 1 in 10 top-ten rows; tuning stays in the backtest batch.
 - Code review notes left for later are listed in `docs/decisions.md`.
 
 ## Good to know
