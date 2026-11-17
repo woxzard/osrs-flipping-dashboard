@@ -38,6 +38,8 @@ export interface Ranking {
   /** How many items make a profit at this cash per slot, in the chosen tab and in all tabs. */
   qualifying: number;
   qualifyingAll: number;
+  /** Entries with full details in the results file, profitable or not. */
+  published: number;
 }
 
 const TRENDS = new Set(['rising', 'flat', 'falling']);
@@ -108,8 +110,10 @@ export function rankPicks(
 ): Ranking {
   const perSlot = cashPerSlot(choice.cash, choice.freeSlots);
   const all: RankedPick[] = [];
+  let published = 0;
   for (const item of items) {
     if (!isPublishedItem(item)) continue;
+    published += 1;
     const sized = sizePick(item, perSlot, settings);
     // Also catches NaN (an unreadable cash amount or slot count).
     if (!(sized.quantity > 0 && sized.profit > 0)) continue;
@@ -128,6 +132,7 @@ export function rankPicks(
     cashPerSlot: perSlot,
     qualifying: chosen.length,
     qualifyingAll: all.length,
+    published,
   };
 }
 

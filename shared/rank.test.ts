@@ -83,6 +83,7 @@ describe('rankPicks on the real published run', () => {
     expect(high.qualifying).toBe(78);
     expect(low.qualifying).toBe(131);
     expect(high.qualifyingAll).toBe(209);
+    expect(high.published).toBe(290);
     for (const pick of high.picks) expect(pick.volume).toBe('high');
     for (const pick of low.picks) expect(pick.volume).toBe('low');
   });

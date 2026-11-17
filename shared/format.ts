@@ -41,3 +41,27 @@ export function formatPercent(share: number): string {
   const tenths = Math.trunc(Math.round(share * 1e6) / 1e3);
   return `${tenths < 0 ? '-' : ''}${Math.floor(Math.abs(tenths) / 10)}.${Math.abs(tenths) % 10}%`;
 }
+
+const MULTIPLIERS: Record<string, number> = { '': 1, k: 1e3, m: 1e6, b: 1e9 };
+
+/**
+ * Reads a gp amount as typed: "25m", "1.5b", "750k", "25,000,000", "2.5 M".
+ * A plain number is taken in `plainUnit` (the custom cash field asks for
+ * millions). Returns NaN for anything else.
+ */
+export function parseGp(text: string, plainUnit = 1): number {
+  const match = /^\s*(\d[\d,]*(?:\.\d+)?|\.\d+)\s*([kmb]?)\s*$/i.exec(text);
+  if (!match?.[1]) return Number.NaN;
+  const number = Number(match[1].replaceAll(',', ''));
+  const suffix = (match[2] ?? '').toLowerCase();
+  const multiplier = suffix ? (MULTIPLIERS[suffix] ?? Number.NaN) : plainUnit;
+  return Math.round(number * multiplier);
+}
+
+/** A gp amount for an address, short when it's exact: 50m, 1500m, 750k, 12345678. */
+export function formatGpParam(amount: number): string {
+  const value = Math.trunc(amount);
+  if (value !== 0 && value % 1e6 === 0) return `${value / 1e6}m`;
+  if (value !== 0 && value % 1e3 === 0) return `${value / 1e3}k`;
+  return String(value);
+}

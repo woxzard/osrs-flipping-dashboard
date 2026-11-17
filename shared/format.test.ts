@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatExactGp, formatGp, formatPercent } from './format.ts';
+import { formatExactGp, formatGp, formatGpParam, formatPercent, parseGp } from './format.ts';
 
 describe('formatGp', () => {
   it.each([
@@ -63,5 +63,43 @@ describe('formatPercent', () => {
 
   it('handles bad input', () => {
     expect(formatPercent(Number.POSITIVE_INFINITY)).toBe('–');
+  });
+});
+
+describe('parseGp', () => {
+  it.each([
+    ['25m', 25_000_000],
+    ['1.5b', 1_500_000_000],
+    ['750k', 750_000],
+    ['750K', 750_000],
+    ['2.5 m', 2_500_000],
+    ['25,000,000', 25_000_000],
+    [' 12 ', 12],
+    ['.5m', 500_000],
+  ])('reads %s', (text, amount) => {
+    expect(parseGp(text)).toBe(amount);
+  });
+
+  it('takes a plain number in the unit asked for', () => {
+    expect(parseGp('25', 1e6)).toBe(25_000_000);
+    expect(parseGp('0.75', 1e6)).toBe(750_000);
+    expect(parseGp('750k', 1e6)).toBe(750_000);
+  });
+
+  it.each(['', 'abc', '-5m', '5x', '1.2.3', '5mm'])('refuses %j', (text) => {
+    expect(parseGp(text)).toBeNaN();
+  });
+});
+
+describe('formatGpParam', () => {
+  it.each([
+    [50_000_000, '50m'],
+    [1_500_000_000, '1500m'],
+    [750_000, '750k'],
+    [12_345_678, '12345678'],
+    [0, '0'],
+  ])('writes %d as %s', (amount, text) => {
+    expect(formatGpParam(amount)).toBe(text);
+    expect(parseGp(text)).toBe(amount);
   });
 });
