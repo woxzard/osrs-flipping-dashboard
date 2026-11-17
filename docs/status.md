@@ -2,18 +2,17 @@
 
 Read this at the start of every session. Updated at the end of each batch and each release. How we work: `docs/workflow.md`.
 
-_Last updated: 2026-11-17 (Dashboard released; hourly start moving to an outside timer)._
+_Last updated: 2026-11-17 (hourly timer running)._
 
 ## Where we are
 - **Released on `main`:** setup, foundation, data job and the **Dashboard batch** (release PR #19, merged 2026-11-17): controls, picks list with icons, item detail with a 14-day chart, stale-data warning.
-- **Hourly start:** GitHub's own schedule never fired a run (9+ hours, and again after rewriting it in #20). Decided: a free outside timer (cron-job.org) starts the job at :07 every hour. The owner sets it up from `TODO-PC.md` (steps 9–11). The removal of GitHub's schedule is on `next` and reaches `main` with the next release. Until the timer runs, start "Hourly data" by hand; the page warns when prices are over 2 hours old.
-- **On `next`, not released:** the schedule removal and these docs.
+- **Hourly start:** a free outside timer (cron-job.org, set up 2026-11-17) starts "Hourly data" at :07 every hour; its test run published at 23:35 Manila. GitHub's own schedule never fired and was removed (#21, released in #22). The timer's GitHub key expires **2027-11-16** (`TODO-PC.md`).
+- **On `next`, not released:** nothing but docs.
 - **Vercel:** connected. **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (not yet confirmed by the owner; cloud sessions can't open Vercel addresses).
 - No `owner-ok` is pre-approved: high-risk PRs wait for the owner again.
 
 ## Next up
-1. Owner: set up the outside timer (`TODO-PC.md` 9–11) and tell Claude; Claude checks that runs arrive every hour.
-2. The **Personal batch** (`docs/plan.md`): send its plan first.
+1. The **Personal batch** (`docs/plan.md`): send its plan first.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site and the Wiki.
 
 ## Open questions for the owner
