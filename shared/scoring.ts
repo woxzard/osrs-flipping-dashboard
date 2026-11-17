@@ -211,7 +211,9 @@ export function scoreItem(
   if (trend === 'falling') flags.push('falling');
   if (level > median(levels) * (1 + settings.spikeAbove)) flags.push('spike');
   if (buyWindowVolume < settings.thinWindowVolume) flags.push('thin');
-  if (tax > 0 && tax >= (sellPrice - buyPrice) * settings.taxHeavyShare) flags.push('tax-heavy');
+  // Only where there is a margin for the tax to eat.
+  const margin = sellPrice - buyPrice;
+  if (tax > 0 && margin > 0 && tax >= margin * settings.taxHeavyShare) flags.push('tax-heavy');
   if (lastTrades) {
     const oldest = Math.min(lastTrades.highTime ?? 0, lastTrades.lowTime ?? 0);
     if (nowSeconds - oldest > settings.staleHours * HOUR) flags.push('stale');
@@ -244,7 +246,7 @@ export interface SizedPick {
   cost: number;
   /** Expected profit after tax if it all fills. */
   profit: number;
-  /** Profit × the share of nights it would have filled, less the falling-price penalty. */
+  /** Profit × the share of the 14 nights it would have filled, less the falling-price penalty. */
   rank: number;
 }
 
@@ -266,7 +268,8 @@ export function sizePick(
     ),
   );
   const profit = quantity * item.profitPerItem;
-  const fillChance = item.nights.length ? item.fillNights / item.nights.length : 0;
+  // Out of the full 14 nights: nights a newer item has no history for count as misses.
+  const fillChance = item.fillNights / Math.max(settings.nights, item.nights.length, 1);
   const penalty = item.trend === 'falling' ? settings.fallingPenalty : 1;
   return {
     quantity,

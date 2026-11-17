@@ -215,6 +215,13 @@ describe('scoreItem: trend and warning flags', () => {
     expect(scoreItem(1, tight, NOW)?.flags).toContain('tax-heavy');
   });
 
+  it('does not call it tax-heavy when there is no margin for the tax to eat', () => {
+    const none = makeHistory(14, () => ({ avgHighPrice: 1000, avgLowPrice: 1010 }));
+    const score = scoreItem(1, none, NOW);
+    expect(score?.profitPerItem).toBeLessThan(0);
+    expect(score?.flags).not.toContain('tax-heavy');
+  });
+
   it('flags an old last trade on either side', () => {
     const now = NOW.getTime() / 1000;
     const fresh = { highTime: now - 600, lowTime: now - 5 * HOUR };
@@ -300,6 +307,12 @@ describe('sizePick', () => {
     expect(sizePick({ ...item, fillNights: 14 }, 1_000_000).rank).toBe(3_500);
     expect(sizePick({ ...item, trend: 'falling' }, 1_000_000).rank).toBe(875);
     expect(sizePick({ ...item, trend: 'rising' }, 1_000_000).rank).toBe(1_750);
+  });
+
+  it('counts the fill chance out of 14 nights, even with less history', () => {
+    const short = { ...item, nights: new Array<boolean>(5).fill(true), fillNights: 4 };
+    // 3,500 gp × 4 of 14 nights, not 4 of 5.
+    expect(sizePick(short, 1_000_000).rank).toBe(1_000);
   });
 
   it('keeps a loss-making item at the bottom', () => {

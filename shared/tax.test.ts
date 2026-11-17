@@ -33,6 +33,13 @@ describe('taxPerItem', () => {
     expect(taxPerItem(BOND, 10_317_201)).toBe(0);
   });
 
+  it("never taxes the other items on the Wiki's exempt list", () => {
+    // Lobster, Varrock teleport tablet, hammer, energy potion(4), mind rune.
+    for (const id of [379, 8007, 2347, 3008, 558]) expect(taxPerItem(id, 1_000)).toBe(0);
+    expect(SETTINGS.taxExemptIds).toHaveLength(48);
+    expect(new Set(SETTINGS.taxExemptIds).size).toBe(48);
+  });
+
   it('pays nothing for a missing or nonsense price', () => {
     expect(taxPerItem(WHIP, Number.NaN)).toBe(0);
     expect(taxPerItem(WHIP, -5)).toBe(0);

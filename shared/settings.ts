@@ -23,6 +23,8 @@ export interface Settings {
   taxFreeUnder: number;
   /** Item ids that never pay tax. */
   taxExemptIds: readonly number[];
+  /** Item ids that can't be flipped, so the job never picks them. */
+  notFlippableIds: readonly number[];
   /** My order may be at most this share of what trades in my buy window. */
   volumeShare: number;
   /** Trend: measured over this many days; under this change per day counts as flat. */
@@ -56,16 +58,74 @@ export const SETTINGS: Settings = {
   taxRate: 0.02,
   taxCapPerItem: 5_000_000,
   taxFreeUnder: 50,
-  // Old school bond. The Wiki's full exempt list is still unchecked
-  // (docs/status.md); taxing an exempt item only makes its profit look smaller.
-  taxExemptIds: [13190],
+  // The Wiki's "Exempt from tax" list (Grand Exchange page, checked 2026-11-17).
+  taxExemptIds: [
+    13190, // Old school bond
+    3008,
+    3010,
+    3012,
+    3014, // Energy potion (4) to (1)
+    882,
+    884,
+    886, // Bronze, iron, steel arrow
+    806,
+    807,
+    808, // Bronze, iron, steel dart
+    558, // Mind rune
+    // Low-level food: bass, bread, cake, cooked chicken, cooked meat, herring,
+    // lobster, mackerel, meat pie, pike, salmon, shrimps, tuna
+    365,
+    2309,
+    1891,
+    2140,
+    2142,
+    347,
+    379,
+    355,
+    2327,
+    351,
+    329,
+    315,
+    361,
+    // Teleport tablets: Varrock, Lumbridge, Falador, Camelot, Ardougne,
+    // house, Kourend castle, Civitas illa fortis
+    8007,
+    8008,
+    8009,
+    8010,
+    8011,
+    8013,
+    28790,
+    28824,
+    3853, // Games necklace(8)
+    2552, // Ring of dueling(8)
+    // Tools: chisel, gardening trowel, glassblowing pipe, hammer, needle,
+    // pestle and mortar, rake, saw, secateurs, seed dibber, shears, spade,
+    // watering can
+    1755,
+    5325,
+    1785,
+    2347,
+    1733,
+    233,
+    5341,
+    8794,
+    5329,
+    5343,
+    1735,
+    952,
+    5331,
+  ],
+  // Old school bond: buying one on the Grand Exchange makes it untradeable,
+  // and making it tradeable again costs 10% of its price.
+  notFlippableIds: [13190],
   volumeShare: 0.1,
   trendDays: 7,
   trendFlatPerDay: 0.005,
   fallingPenalty: 0.5,
   spikeAbove: 0.25,
   thinWindowVolume: 30,
-  taxHeavyShare: 0.5,
+  taxHeavyShare: 0.6,
   staleHours: 6,
   historyCap: 300,
   defaultCashPerSlot: 50_000_000,

@@ -6,22 +6,25 @@ _Last updated: 2026-11-17._
 
 ## Where we are
 - **Released on `main`:** setup and foundation batches. The page shows "No picks yet" until the data job is released.
-- **On `next`, not released:** the data job batch (PRs #7–#9): scoring rules, the job, the hourly workflow. The release PR (`next` → `main`, label `release`) is open **as a draft** because of the blocker below.
-- **Blocker before the release: one real run of the job.** The 2026-11-17 session could not reach `prices.runescape.wiki` (it was not running in the `osrs-flipping-dashboard` environment, and package installs were off), so the job has only run on the saved samples. In a session that can reach the site: `make setup`, then `NODE_USE_ENV_PROXY=1 node job/run.ts --out /tmp/out`, and check that the output is believable (about 300 candidates, sensible top ten, prices near the live ones). Then mark the release PR ready and tell the owner.
+- **On `next`, not released:** the data job batch (PRs #7–#9 and the fixes from the first real run): scoring rules, the job, the hourly workflow. The release PR #10 (`next` → `main`, label `release`) is **ready for the owner to test and merge**.
+- **The real run is done (2026-11-17, 11:56 Manila):** 4,681 items, 300 candidates, 290 scored, 10 with too little history, 0 failed requests, 91 seconds. Prices were near the live ones. It led to four fixes, all agreed with the owner (`docs/decisions.md`): bonds are never picked, the tax-heavy flag starts at 60%, fill chance counts out of 14, and the tax exempt list is the Wiki's full list. `make check`, `make build` and `make e2e` pass in a cloud session, and `/code-review` has been run over the whole batch.
 - **Vercel:** connected. **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (not yet confirmed by the owner).
-- `owner-ok` was pre-approved by the owner for the two high-risk PRs of this batch only. Later high-risk PRs wait for the owner again.
+- `owner-ok` was pre-approved by the owner for the high-risk PRs of this batch only, including the fix PR. Later high-risk PRs wait for the owner again.
 
 ## Next up
-1. The real run above, then the owner tests and merges the release PR (merge commit).
+1. The owner tests and merges the release PR #10 (merge commit).
 2. After the merge: start "Hourly data" by hand (Actions → Hourly data → Run workflow), check that the `data` branch gets `picks.json` and the released page lists real item names with a fresh update time. Then move this batch to "Done" in `docs/plan.md`.
 3. Then the **Dashboard batch** (`docs/plan.md`): send its plan first.
-- Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site.
+- Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site and the Wiki.
 
 ## Open questions for the owner
-1. **Tax exempt list.** Rate (2%, rounded down), the 5m cap and the 50 gp floor agree with a web search, but the Wiki's own page could not be opened (needs `oldschool.runescape.wiki` allowed in the cloud environment). Only bonds are treated as exempt until that is checked; taxing an exempt item only makes its profit look smaller.
-2. **Does the `next` preview address above open on your phone?**
+1. **Does the `next` preview address above open on your phone?**
 
-Answered on 2026-11-17 (in `docs/decisions.md`): window hours stay in the settings file for v1; at most 300 history requests an hour.
+Seen in the real run, for the dashboard and backtest batches (nothing to decide now):
+- No pick ever shows more than about 10 of 14 nights. The buy and sell prices are each reached on about 70% of nights, so both together land at 6–10 of 14. The dashboard should not present 8 of 14 as weak.
+- Suggested buy prices can sit a few percent under the live price for a rising item (Masori mask: buy at 13.69m, trading at 14.6m). That is the method working (wait for the dip), but such offers fill less often.
+- The top ten is a mix: four cheap stackables and six items over 8m, sized for 50m in one slot.
+- Code review notes left for later are listed in `docs/decisions.md`.
 
 ## Good to know
 - If a PR's risk-gate run hangs "in progress" after labels are added, two runs are waiting on each other: cancel the stuck run and edit the PR description to start a fresh one. Adding the labels in one step right when the PR opens seems to trigger it.
