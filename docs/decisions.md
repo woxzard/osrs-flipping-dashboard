@@ -98,3 +98,13 @@
 | Window hours can be changed on the phone; the page then re-scores from the items' hourly history | Owner's answer. Costs about 3.7 MB of downloads per hourly update while my hours differ from the job's; the job keeps scoring with the defaults. |
 | Ticking a flip doesn't change "free slots" | Owner's answer. Changing it by itself would quietly resize every pick. |
 | The watchlist search covers the ~290 items scored each hour, not the whole game | Owner's answer. Items outside them have no prices; a full list waits for the watched-item notification, which changes the job anyway. |
+
+### 2026-11-17 – Personal: small choices while building
+| Decision | Why |
+|---|---|
+| A flip keeps the offer as sized when ticked; only id, name and icon of an item are stored with each list entry | The lists still read well when an item leaves the update; nothing else is needed. |
+| Messages: one at a time above the tab bar, 2.5 s plain / 5 s with Undo; no message when the button itself shows the change | Owner's rule 4; ux-fundamentals "don't toast what's obvious". |
+| Sizing one item lives once in `shared/rank.ts` (`rankItem`); the "Not shown" counts reuse `rankPicks` | Picks and watchlist can't drift apart. |
+| Window hours: bedtime, wake up (buying stops and selling starts), stop selling; buying and selling together within 24 hours (`hoursProblem` in `shared/rescore.ts`) | Matches the default hours' shape and the night model the scoring uses. |
+| With custom hours a newer update keeps the last scored list until it's scored, and keeps it if downloading fails; the first scoring failing shows Try again | Same as the page's quiet refresh: an open page never loses its list to a background update. |
+| Items the job couldn't score with its hours can't appear with mine either | The job publishes history only for items it scored; changing that touches the job. |
