@@ -13,7 +13,7 @@ These involve accounts or settings, so Claude can't do them. All can be done in 
 Nothing to switch on for merging: PRs into `next` are merged by the "Merge when green" workflow. `hold` stops a PR; `owner-ok` approves a high-risk one.
 
 ## Data job release
-- [ ] 7. After merging the data job release PR: GitHub app or browser → the repo → Actions → "Hourly data" → Run workflow (branch `main`). A minute or two later the page should list real item names. After that it runs by itself every hour.
+- [x] 7. After merging the data job release PR: GitHub app or browser → the repo → Actions → "Hourly data" → Run workflow (branch `main`). A minute or two later the page should list real item names. After that it runs by itself every hour.
 - [x] 8. Optional, for the tax check: add `oldschool.runescape.wiki` to the `osrs-flipping-dashboard` cloud environment's allowed sites. (Done; the tax rules were checked on 2026-11-17.)
 
 ## Good to know
