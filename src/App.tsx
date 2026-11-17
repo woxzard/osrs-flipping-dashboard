@@ -17,7 +17,7 @@ import { BackButton } from './BackButton.tsx';
 import { Controls } from './Controls.tsx';
 import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
-import { FlipStatus, ItemDetail, WatchButton } from './ItemDetail.tsx';
+import { BlockControl, FlipStatus, ItemDetail, WatchButton } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
 import {
   itemHref,
@@ -32,7 +32,7 @@ import {
 } from './route.ts';
 import { MyFlips } from './Lists.tsx';
 import { Watchlist } from './Watchlist.tsx';
-import { hiddenIds, type Flip, type Offer } from './personal.ts';
+import type { Flip, Offer } from './personal.ts';
 import { usePersonal, type ItemRef } from './usePersonal.ts';
 
 import { SettingsScreen } from './SettingsScreen.tsx';
@@ -271,7 +271,8 @@ function usePicks() {
 function Picks({
   picks,
   choice,
-  hidden,
+  flippingIds,
+  blockedIds,
   watched,
   onShowAll,
   onOpen,
@@ -279,8 +280,9 @@ function Picks({
 }: {
   picks: PicksFile;
   choice: Choice;
-  /** Items kept out of the picks: the ones I'm flipping or blocked. */
-  hidden: ReadonlySet<number>;
+  /** Items kept out of the picks: the ones I'm flipping and the ones I blocked. */
+  flippingIds: ReadonlySet<number>;
+  blockedIds: ReadonlySet<number>;
   /** Items on my watchlist, marked in the list. */
   watched: ReadonlySet<number>;
   onShowAll: () => void;
@@ -291,20 +293,33 @@ function Picks({
   const ranking = useMemo(
     () =>
       rankPicks(
-        picks.items.filter((item) => !hidden.has(item.id)),
+        picks.items.filter((item) => !flippingIds.has(item.id) && !blockedIds.has(item.id)),
         choice,
         settings,
       ),
-    [picks.items, hidden, choice, settings],
+    [picks.items, flippingIds, blockedIds, choice, settings],
   );
   // How many of my hidden items would be in this list: only those are worth a word.
-  const everything = useMemo(
-    () => rankPicks(picks.items, choice, settings),
-    [picks.items, choice, settings],
-  );
-  const hiddenHere = everything.qualifying - ranking.qualifying;
-  const hiddenNote =
-    hiddenHere === 1 ? "1 item you're flipping" : `${hiddenHere} items you're flipping`;
+  const hiddenHere = useMemo(() => {
+    const qualifying = (keep: (id: number) => boolean) =>
+      rankPicks(
+        picks.items.filter((item) => keep(item.id)),
+        choice,
+        settings,
+      ).qualifying;
+    const withFlips = qualifying((id) => !blockedIds.has(id));
+    return {
+      flipped: withFlips - ranking.qualifying,
+      blocked: qualifying(() => true) - withFlips,
+    };
+  }, [picks.items, blockedIds, choice, settings, ranking.qualifying]);
+  const hiddenNote = [
+    hiddenHere.flipped === 1 && "1 item you're flipping (My flips)",
+    hiddenHere.flipped > 1 && `${hiddenHere.flipped} items you're flipping (My flips)`,
+    hiddenHere.blocked > 0 && `${hiddenHere.blocked} blocked (Settings)`,
+  ]
+    .filter(Boolean)
+    .join(', ');
   // A ticked row disappears: keep keyboard and screen-reader focus on the list.
   const list = useRef<HTMLOListElement>(null);
 
@@ -322,7 +337,7 @@ function Picks({
       <h2 id="short-title">{ranking.picks.length === 0 ? 'Nothing qualifies' : 'A short list'}</h2>
       <p>
         {shortListReason(ranking, choice)}
-        {hiddenHere > 0 && ` Also not shown: ${hiddenNote} (My flips).`}
+        {hiddenNote && ` Also not shown: ${hiddenNote}.`}
       </p>
       {choice.volume !== 'all' && ranking.qualifyingAll > ranking.qualifying && (
         <button type="button" className="button" onClick={onShowAll}>
@@ -372,8 +387,8 @@ function Picks({
           ))}
         </ol>
       )}
-      {hiddenHere > 0 && ranking.picks.length >= FEW_PICKS && (
-        <p className="note">Not shown: {hiddenNote} (My flips).</p>
+      {hiddenNote && ranking.picks.length >= FEW_PICKS && (
+        <p className="note">Not shown: {hiddenNote}.</p>
       )}
       <p className="note">
         <strong>Nights:</strong> on how many of the last {settings.nights} nights both your buy and
@@ -427,6 +442,9 @@ function Detail({
   watched,
   onWatch,
   onUnwatch,
+  blocked,
+  onBlock,
+  onUnblock,
   saved,
 }: {
   itemId: number;
@@ -441,6 +459,9 @@ function Detail({
   watched: boolean;
   onWatch: (item: ItemRef) => void;
   onUnwatch: () => void;
+  blocked: boolean;
+  onBlock: (item: ItemRef) => void;
+  onUnblock: () => void;
   /** The item as on my lists, for when the update doesn't have it. */
   saved?: ItemRef;
 }) {
@@ -472,6 +493,11 @@ function Detail({
             <WatchButton watched={watched} onWatch={() => onWatch(known)} onUnwatch={onUnwatch} />
           </div>
         )}
+        {known && (
+          <div className="detail-apart">
+            <BlockControl blocked={blocked} onBlock={() => onBlock(known)} onUnblock={onUnblock} />
+          </div>
+        )}
       </>
     );
   }
@@ -490,6 +516,9 @@ function Detail({
       watched={watched}
       onWatch={() => onWatch(item)}
       onUnwatch={onUnwatch}
+      blocked={blocked}
+      onBlock={() => onBlock(item)}
+      onUnblock={onUnblock}
     />
   );
 }
@@ -500,8 +529,7 @@ export function App() {
   const { view, itemId, open, close, showView } = useNav(state.status !== 'loading');
   const settings = state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS;
   const onList = itemId === null;
-  const { personal, unsaved, startFlip, sold, watch, unwatch } = usePersonal();
-  const hidden = useMemo(() => hiddenIds(personal), [personal]);
+  const { personal, unsaved, startFlip, sold, watch, unwatch, block, unblock } = usePersonal();
   const watchedIds = useMemo(
     () => new Set(personal.watch.map((saved) => saved.id)),
     [personal.watch],
@@ -513,6 +541,10 @@ export function App() {
   const sellNow = useMemo(
     () => new Map(published.map((item) => [item.id, item.sellPrice])),
     [published],
+  );
+  const blockedIds = useMemo(
+    () => new Set(personal.block.map((saved) => saved.id)),
+    [personal.block],
   );
   const flippingIds = useMemo(
     () => new Set(personal.flips.map((flip) => flip.id)),
@@ -554,7 +586,8 @@ export function App() {
           <Picks
             picks={state.picks}
             choice={choice}
-            hidden={hidden}
+            flippingIds={flippingIds}
+            blockedIds={blockedIds}
             watched={watchedIds}
             onShowAll={() => setChoice({ ...choice, volume: 'all' })}
             onOpen={open}
@@ -592,6 +625,7 @@ export function App() {
           choice={choice}
           settings={settings}
           flipping={flippingIds}
+          blocked={blockedIds}
           unsaved={unsaved}
           onWatch={(item) => watch(item, true)}
           onUnwatch={unwatch}
@@ -600,7 +634,13 @@ export function App() {
         />
       </div>
       <div hidden={!onList || view !== 'settings'}>
-        <SettingsScreen settings={settings} />
+        <SettingsScreen
+          settings={settings}
+          blocked={personal.block}
+          unsaved={unsaved}
+          onUnblock={unblock}
+          onOpen={open}
+        />
       </div>
 
       {itemId !== null && (
@@ -618,7 +658,14 @@ export function App() {
           watched={watchedIds.has(itemId)}
           onWatch={watch}
           onUnwatch={() => unwatch(itemId)}
-          saved={flipOf(itemId) ?? personal.watch.find((entry) => entry.id === itemId)}
+          blocked={blockedIds.has(itemId)}
+          onBlock={block}
+          onUnblock={() => unblock(itemId)}
+          saved={
+            flipOf(itemId) ??
+            personal.watch.find((entry) => entry.id === itemId) ??
+            personal.block.find((entry) => entry.id === itemId)
+          }
         />
       )}
 

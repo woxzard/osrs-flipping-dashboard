@@ -943,3 +943,55 @@ body {
   background: none;
   border: 0;
 }
+
+/* "Never show": apart from the other actions, quieter, so a slip can't hit it. */
+.detail-apart {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.block-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--muted);
+}
+
+.blocked-status .button {
+  margin-top: 0.5rem;
+}
+
+.settings-section {
+  margin-top: 1.5rem;
+}
+
+.settings-section h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.settings-section > p {
+  margin: 0.25rem 0 0;
+}
+
+.settings-section .list {
+  margin-top: 0.75rem;
+}
+
+.blocked-row .pick-name {
+  font-size: 1rem;
+}
+
+.blocked-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.blocked-row .pick-actions,
+.blocked-row .pick-actions .button {
+  margin-top: 0;
+}
