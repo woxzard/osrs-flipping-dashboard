@@ -11,7 +11,7 @@ What's next, in order, as batches (`docs/workflow.md`). Finished work is one lin
 See "Later" item 1; the batch plan comes first.
 
 ## Later
-1. **Dashboard:** controls, picks list, item detail, freshness, all the loading / empty / error states. Propose the High/Low volume cut-off from real data.
+1. **Dashboard:** controls, picks list, item detail, freshness, all the loading / empty / error states. Plan approved 2026-11-17 (answers in `docs/decisions.md`); High/Low cut-off 2%.
 2. **Personal:** "I'm flipping this" with undo, My flips, watchlist, blocklist, window settings.
 3. **After v1:** flip log with export; backtest to tune the scoring; phone notification for watched items.
 

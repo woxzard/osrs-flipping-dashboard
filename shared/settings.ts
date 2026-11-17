@@ -27,6 +27,11 @@ export interface Settings {
   notFlippableIds: readonly number[];
   /** My order may be at most this share of what trades in my buy window. */
   volumeShare: number;
+  /**
+   * Volume tabs on the page: "High" when my order is at most this share of what
+   * usually trades in my buy window, "Low" when it's more.
+   */
+  highVolumeShare: number;
   /** Trend: measured over this many days; under this change per day counts as flat. */
   trendDays: number;
   trendFlatPerDay: number;
@@ -120,6 +125,7 @@ export const SETTINGS: Settings = {
   // and making it tradeable again costs 10% of its price.
   notFlippableIds: [13190],
   volumeShare: 0.1,
+  highVolumeShare: 0.02,
   trendDays: 7,
   trendFlatPerDay: 0.005,
   fallingPenalty: 0.5,
