@@ -70,6 +70,7 @@ export function ItemDetail({
   choice,
   settings,
   generatedAt,
+  backLabel,
   onBack,
   notice,
 }: {
@@ -77,6 +78,8 @@ export function ItemDetail({
   choice: Choice;
   settings: Settings;
   generatedAt: string;
+  /** The list it was opened from, for the back button. */
+  backLabel: string;
   onBack: () => void;
   /** Shown under the item's name: the stale-data warning. */
   notice?: ReactNode;
@@ -99,7 +102,7 @@ export function ItemDetail({
 
   return (
     <article className="detail" aria-labelledby="detail-title">
-      <BackButton onBack={onBack} />
+      <BackButton label={backLabel} onBack={onBack} />
       <header className="pick-head detail-head">
         <ItemIcon key={item.icon} icon={item.icon} name={item.name} />
         <h1 id="detail-title" className="pick-name">

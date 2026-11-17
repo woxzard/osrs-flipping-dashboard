@@ -116,6 +116,7 @@ Icon + text, never colour alone:
 - A clear warning when the data is more than about 2 hours old (the outside timer or GitHub can fail or stall).
 
 ### 7.7 Personal (stored on the phone)
+- **Reached by a bottom bar:** Picks · My flips · Watchlist · Settings. The tab is in the address (`?view=flips`); each list keeps its own scroll position.
 - **"I'm flipping this"** tick: hides the item from the picks, with a "Hidden · Undo" toast. A **My flips** list shows what's ticked so I can untick when sold.
 - **Watchlist** (pinned items) and **blocklist** (never show).
 - **Settings:** buy and sell window hours.

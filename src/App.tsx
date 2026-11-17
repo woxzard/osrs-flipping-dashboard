@@ -18,7 +18,20 @@ import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
 import { ItemDetail } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
-import { itemHref, readItemId, restoreListScroll, saveListScroll, withoutItem } from './route.ts';
+import {
+  itemHref,
+  readItemId,
+  readView,
+  savedScroll,
+  saveScroll,
+  VIEW_NAME,
+  viewHref,
+  withoutItem,
+  type View,
+} from './route.ts';
+import { MyFlips, Watchlist } from './Lists.tsx';
+import { SettingsScreen } from './SettingsScreen.tsx';
+import { TabBar } from './TabBar.tsx';
 
 type State =
   | { status: 'loading' }
@@ -59,36 +72,75 @@ function useChoice() {
 }
 
 /**
- * The open item, kept in the address (`?item=27226`). Opening one adds a
- * history entry, so back (button, gesture or the page's own) returns to the
- * list, which stays mounted underneath at the same scroll position.
+ * Where the page is: the tab and the open item, both kept in the address.
+ * Opening an item or switching tabs adds a history entry, so back (button,
+ * gesture or the page's own) returns to the list it came from, which stays
+ * mounted underneath, at the same scroll position.
  */
-function useItem() {
-  const [itemId, setItemId] = useState<number | null>(() => readItemId(window.location.search));
+function useNav(picksShown: boolean) {
+  const [place, setPlace] = useState(readPlace);
 
   useEffect(() => {
-    const onPop = () => setItemId(readItemId(window.location.search));
+    const onPop = () => setPlace(readPlace());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Back on the list from an item: put it where it was.
-  const openedFrom = useRef<number | null>(itemId);
+  // A list position waiting to be put back: on arriving at a list (back from
+  // an item, or another tab) and on a refresh. It waits for the picks to load,
+  // so the page is tall enough to get there.
+  const pending = useRef<number | null>(
+    place.itemId === null ? savedScroll(window.location.search) : null,
+  );
+  const ready = place.view !== 'picks' || picksShown;
+  const previous = useRef(place);
   useLayoutEffect(() => {
-    if (itemId === null && openedFrom.current !== null) {
-      restoreListScroll(window.location.search);
+    const before = previous.current;
+    previous.current = place;
+    if (before.view !== place.view || before.itemId !== place.itemId) {
+      pending.current = place.itemId === null ? (savedScroll(window.location.search) ?? 0) : null;
     }
-    openedFrom.current = itemId;
-  }, [itemId]);
+    if (pending.current !== null && ready) {
+      window.scrollTo(0, pending.current);
+      pending.current = null;
+    }
+  }, [place, ready]);
 
-  const open = useCallback((id: number) => {
-    saveListScroll(window.location.search, window.scrollY);
-    window.history.pushState({ fromList: true }, '', itemHref(window.location.search, id));
-    // The page itself restores the list's scroll when coming back to it, for
-    // this entry only; the list's own entry keeps the browser's restoring.
-    window.history.scrollRestoration = 'manual';
-    setItemId(id);
+  // Remember where each list is scrolled to (not an item: it starts at the
+  // top), at most once a frame, and not while a position waits to go back.
+  const save = useCallback(() => {
+    if (pending.current === null && readItemId(window.location.search) === null) {
+      saveScroll(window.location.search, window.scrollY);
+    }
   }, []);
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        save();
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [save]);
+
+  const go = useCallback(
+    (href: string) => {
+      save();
+      window.history.pushState({ fromList: true }, '', href);
+      // The page puts lists back itself on the entries it makes.
+      window.history.scrollRestoration = 'manual';
+      setPlace(readPlace());
+    },
+    [save],
+  );
+
+  const open = useCallback((id: number) => go(itemHref(window.location.search, id)), [go]);
 
   const close = useCallback(() => {
     if ((window.history.state as { fromList?: boolean } | null)?.fromList) {
@@ -97,10 +149,31 @@ function useItem() {
     }
     // Opened from a link: there's no list entry to go back to, so make one.
     window.history.replaceState(null, '', withoutItem(window.location.search));
-    setItemId(null);
+    setPlace(readPlace());
   }, []);
 
-  return { itemId, open, close };
+  const showView = useCallback(
+    (view: View) => {
+      const current = readPlace();
+      if (view !== current.view) {
+        go(viewHref(window.location.search, view));
+      } else if (current.itemId !== null) {
+        close(); // the open item's own tab: back to its list
+      } else {
+        window.scrollTo(0, 0); // the tab already shown: back to its top
+      }
+    },
+    [go, close],
+  );
+
+  return { ...place, open, close, showView };
+}
+
+function readPlace() {
+  return {
+    view: readView(window.location.search),
+    itemId: readItemId(window.location.search),
+  };
 }
 
 const VOLUME_NAME = { all: '', high: 'High-volume ', low: 'Low-volume ' } as const;
@@ -298,18 +371,20 @@ function Detail({
   state,
   retry,
   choice,
+  backLabel,
   onBack,
 }: {
   itemId: number;
   state: State;
   retry: () => void;
   choice: Choice;
+  backLabel: string;
   onBack: () => void;
 }) {
   if (state.status !== 'ready') {
     return (
       <>
-        <BackButton onBack={onBack} />
+        <BackButton label={backLabel} onBack={onBack} />
         <PicksStates state={state} retry={retry} />
       </>
     );
@@ -318,7 +393,7 @@ function Detail({
   if (!item || !isPublishedItem(item)) {
     return (
       <>
-        <BackButton onBack={onBack} />
+        <BackButton label={backLabel} onBack={onBack} />
         <section className="card" aria-labelledby="gone-title">
           <h2 id="gone-title">Not in the latest update</h2>
           <p>This item isn't among the flips the last hourly update looked at.</p>
@@ -332,6 +407,7 @@ function Detail({
       choice={choice}
       settings={settingsFor(state.picks.settings)}
       generatedAt={state.picks.generatedAt}
+      backLabel={backLabel}
       onBack={onBack}
       notice={<StaleNotice generatedAt={state.picks.generatedAt} />}
     />
@@ -341,12 +417,22 @@ function Detail({
 export function App() {
   const { state, retry } = usePicks();
   const [choice, setChoice] = useChoice();
-  const { itemId, open, close } = useItem();
+  const { view, itemId, open, close, showView } = useNav(state.status !== 'loading');
+  const settings = state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS;
+  const onList = itemId === null;
+
+  // Say which screen this is (an item names itself).
+  useEffect(() => {
+    if (onList) {
+      document.title =
+        view === 'picks' ? 'OSRS overnight flips' : `${VIEW_NAME[view]} · Overnight flips`;
+    }
+  }, [view, onList]);
 
   return (
     <main className="page">
-      {/* The list stays mounted under an open item, so back finds it as it was. */}
-      <div hidden={itemId !== null}>
+      {/* Every list stays mounted under an open item or another tab, so back finds it as it was. */}
+      <div hidden={!onList || view !== 'picks'}>
         <header className="page-header">
           <h1>Overnight flips</h1>
           {state.status === 'ready' ? (
@@ -359,10 +445,7 @@ export function App() {
         <Controls
           choice={choice}
           cashPerSlot={cashPerSlot(choice.cash, choice.freeSlots)}
-          highVolumeShare={
-            (state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS)
-              .highVolumeShare
-          }
+          highVolumeShare={settings.highVolumeShare}
           onChange={setChoice}
         />
 
@@ -378,11 +461,34 @@ export function App() {
         )}
       </div>
 
+      <div hidden={!onList || view !== 'flips'}>
+        <MyFlips onShowPicks={() => showView('picks')} />
+      </div>
+      <div hidden={!onList || view !== 'watch'}>
+        <Watchlist onShowPicks={() => showView('picks')} />
+      </div>
+      <div hidden={!onList || view !== 'settings'}>
+        <SettingsScreen settings={settings} />
+      </div>
+
       {itemId !== null && (
-        <Detail itemId={itemId} state={state} retry={retry} choice={choice} onBack={close} />
+        <Detail
+          itemId={itemId}
+          state={state}
+          retry={retry}
+          choice={choice}
+          backLabel={VIEW_NAME[view]}
+          onBack={close}
+        />
       )}
 
       <footer className="footer">Prices and icons: OSRS Wiki</footer>
+
+      <TabBar
+        current={view}
+        search={writeChoice(choice, window.location.search)}
+        onSelect={showView}
+      />
     </main>
   );
 }
