@@ -67,3 +67,18 @@
 | Tax exempt list: the Wiki's full list (48 item ids), checked 2026-11-17 | Rate, rounding, 5m cap and 50 gp floor also confirmed on the Wiki's Grand Exchange page. |
 | Hours of history in an unexpected shape are dropped; trade times that aren't numbers are ignored by the stuck-prices check | Code review: one broken value could otherwise publish an item with no price, or let old prices through as fresh. |
 | Left for later (code review, not bugs today): the trend only sees finished nights, so a sudden crash takes up to two days to raise "falling"; no retry when a Wiki request fails (the next hour retries); the windows must fit in 24 hours from the buy start | To weigh in the backtest and Personal batches. |
+
+### 2026-11-17 – Dashboard
+| Decision | Why |
+|---|---|
+| Volume tabs: **High** when my order is at most 2% of what usually trades in my buy window (`highVolumeShare` in the settings file), **Low** above that; default tab **All** | Owner's answer, from the first real run: at 50m in one slot 78 High / 131 Low; the top ten High average 2.1% return and 8.7 of 14 fill nights, Low 2.7% and 8.3. The group depends on order size, so more cash can move an item to Low. Starting value, tuned in the backtest batch. |
+| Fill nights read "8 of 14 nights · typical": 10+ strong, 8–9 typical, under 8 below typical (as shares of the measured nights); never red or amber | Owner's answer. Real picks land at 6–10 of 14 because the buy and the sell both have to fill. |
+| A rising item's buy-under-market gap is shown in the item detail ("Last hour: … Your buy is 6% under"), not in the row | Owner's answer. 45% of top-ten rows are rising, so a row warning would be noise; the row would need the job to publish the live price (`risk:high`, backtest batch). |
+| The chart is drawn as plain SVG, no chart library | Owner's answer. One line chart; a library would add about 100 KB. |
+| Tax-heavy flag kept at 60%, worded "Tax takes over half the margin" | Owner's answer, with the wording corrected in code review: the flag compares tax with the margin before tax, so "over half the profit" was wrong. Shows on about 1 in 10 top-ten rows; tuning stays in the backtest batch. |
+| Buy at and Sell at are exact gp (13,751,666); cash, profit, volume and limit stay short | Owner's answer. The prices are typed into the Grand Exchange. |
+| First visit: 50m, 1 free slot; then the last choice on this phone; custom cash 100k to 2,147m | Owner's answer. 50m matches the job's default; 2,147m is the game's cash stack limit. |
+| Item icons load from the OSRS Wiki's image files, in a fixed 36 px tile with a first-letter fallback; the footer credits the Wiki | Owner's answer. Small, cached by the phone, ~10 per screen; copying them into `data` would be a job change. |
+| Page checks use a copy of the first real published run (`samples/published/`) | The hand-written sample has names only. |
+| The page sizes picks with the settings the results file was scored with, over its own | Keeps `next` in step with the job on `main` when starting values differ. |
+| Left for later (code review): the page's item check repeats the job's number check (`job/build.ts`); sharing it means touching `job/` (`risk:high`) | Fold in with the next job change. |

@@ -1,7 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PicksFile } from '../shared/picks.ts';
-import { formatAgo, formatManilaTime } from '../shared/time.ts';
+import { formatGp } from '../shared/format.ts';
+import {
+  FEW_PICKS,
+  isPublishedItem,
+  rankPicks,
+  settingsFor,
+  type Choice,
+  type Ranking,
+} from '../shared/rank.ts';
+import { cashPerSlot } from '../shared/scoring.ts';
+import { SETTINGS } from '../shared/settings.ts';
+import { loadStoredChoice, readChoice, storeChoice, writeChoice } from './choice.ts';
+import { BackButton } from './BackButton.tsx';
+import { Controls } from './Controls.tsx';
+import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
+import { ItemDetail } from './ItemDetail.tsx';
+import { PickRow } from './PickRow.tsx';
+import { itemHref, readItemId, restoreListScroll, saveListScroll, withoutItem } from './route.ts';
 
 type State =
   | { status: 'loading' }
@@ -9,8 +26,100 @@ type State =
   | { status: 'error' }
   | { status: 'ready'; picks: PicksFile };
 
-/** The job lists every candidate, best first; the page shows the top ones. */
-const TOP_PICKS = 10;
+/** The controls' choice, kept in the address and remembered on this phone. */
+function useChoice() {
+  const [choice, setChoice] = useState<Choice>(() =>
+    readChoice(window.location.search, loadStoredChoice()),
+  );
+
+  // Write the choice into the address (replacing, so back isn't a trail of
+  // chip taps) and remember it for the next visit.
+  useEffect(() => {
+    const search = writeChoice(choice, window.location.search);
+    if (search !== window.location.search) {
+      window.history.replaceState(window.history.state, '', search + window.location.hash);
+    }
+  }, [choice]);
+
+  // Remembered only when changed here: opening a pasted link doesn't
+  // overwrite the last choice on this phone.
+  const change = useCallback((next: Choice) => {
+    setChoice(next);
+    storeChoice(next);
+  }, []);
+
+  // Back and forward bring their own address: follow it.
+  useEffect(() => {
+    const onPop = () => setChoice(readChoice(window.location.search, loadStoredChoice()));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  return [choice, change] as const;
+}
+
+/**
+ * The open item, kept in the address (`?item=27226`). Opening one adds a
+ * history entry, so back (button, gesture or the page's own) returns to the
+ * list, which stays mounted underneath at the same scroll position.
+ */
+function useItem() {
+  const [itemId, setItemId] = useState<number | null>(() => readItemId(window.location.search));
+
+  useEffect(() => {
+    const onPop = () => setItemId(readItemId(window.location.search));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Back on the list from an item: put it where it was.
+  const openedFrom = useRef<number | null>(itemId);
+  useLayoutEffect(() => {
+    if (itemId === null && openedFrom.current !== null) {
+      restoreListScroll(window.location.search);
+    }
+    openedFrom.current = itemId;
+  }, [itemId]);
+
+  const open = useCallback((id: number) => {
+    saveListScroll(window.location.search, window.scrollY);
+    window.history.pushState({ fromList: true }, '', itemHref(window.location.search, id));
+    // The page itself restores the list's scroll when coming back to it, for
+    // this entry only; the list's own entry keeps the browser's restoring.
+    window.history.scrollRestoration = 'manual';
+    setItemId(id);
+  }, []);
+
+  const close = useCallback(() => {
+    if ((window.history.state as { fromList?: boolean } | null)?.fromList) {
+      window.history.back(); // popstate closes it
+      return;
+    }
+    // Opened from a link: there's no list entry to go back to, so make one.
+    window.history.replaceState(null, '', withoutItem(window.location.search));
+    setItemId(null);
+  }, []);
+
+  return { itemId, open, close };
+}
+
+const VOLUME_NAME = { all: '', high: 'High-volume ', low: 'Low-volume ' } as const;
+
+/** Why the list is short, and what to try (docs/spec.md §7.3). */
+function shortListReason(ranking: Ranking, choice: Choice): string {
+  const perSlot = formatGp(ranking.cashPerSlot);
+  const count = ranking.picks.length;
+  const what = `${VOLUME_NAME[choice.volume]}${count === 1 ? 'flip' : 'flips'}`;
+  const found = count === 0 ? `No ${what}` : `Only ${count} ${what}`;
+  switch (choice.volume) {
+    case 'low':
+      return `${found} at ${perSlot} per slot. A small order is a small part of the trading, so most items count as High volume. Try All, or more cash per slot.`;
+    case 'high':
+      return `${found} at ${perSlot} per slot. A large order is a big part of the trading, so most items count as Low volume. Try All, or less cash per slot.`;
+    default:
+      return `${found} ${count === 1 ? 'makes' : 'make'} a profit at ${perSlot} per slot. Try more cash per slot.`;
+  }
+}
 
 function usePicks() {
   const [state, setState] = useState<State>({ status: 'loading' });
@@ -32,49 +141,135 @@ function usePicks() {
     setAttempt((n) => n + 1);
   }, []);
 
+  // Quietly fetch again when the page comes back into view, and every few
+  // minutes while the shown file is over two hours old: an open tab mustn't
+  // keep an old copy and blame the hourly job for it. Failures change nothing.
+  const latest = useRef(state);
+  useEffect(() => {
+    latest.current = state;
+  }, [state]);
+  useEffect(() => {
+    let lastCheck = Date.now();
+    let controller: AbortController | undefined;
+    const refresh = () => {
+      const current = latest.current;
+      if (current.status !== 'ready' || Date.now() - lastCheck < 60_000) return;
+      lastCheck = Date.now();
+      controller?.abort();
+      controller = new AbortController();
+      loadPicks(controller.signal).then(
+        (picks) => {
+          if (picks && picks.generatedAt !== current.picks.generatedAt) {
+            setState({ status: 'ready', picks });
+          }
+        },
+        () => {},
+      );
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    const timer = setInterval(() => {
+      const current = latest.current;
+      if (
+        document.visibilityState === 'visible' &&
+        current.status === 'ready' &&
+        isStale(new Date(current.picks.generatedAt), new Date())
+      ) {
+        refresh();
+      }
+    }, 5 * 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      controller?.abort();
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
   return { state, retry };
 }
 
-/** The current time, refreshed often enough for "23 min ago" to stay true. */
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(timer);
-  }, []);
-  return now;
-}
+function Picks({
+  picks,
+  choice,
+  onShowAll,
+  onOpen,
+}: {
+  picks: PicksFile;
+  choice: Choice;
+  onShowAll: () => void;
+  onOpen: (id: number) => void;
+}) {
+  const settings = useMemo(() => settingsFor(picks.settings), [picks.settings]);
+  const ranking = useMemo(
+    () => rankPicks(picks.items, choice, settings),
+    [picks.items, choice, settings],
+  );
 
-function Freshness({ generatedAt }: { generatedAt: string }) {
-  const now = useNow();
-  const at = new Date(generatedAt);
+  if (ranking.published === 0) {
+    return (
+      <section className="card" aria-labelledby="empty-title">
+        <h2 id="empty-title">Nothing qualifies right now</h2>
+        <p>The last update found no flips worth listing. Check back after the next update.</p>
+      </section>
+    );
+  }
+
+  const short = ranking.picks.length < FEW_PICKS && (
+    <section className="card" aria-labelledby="short-title">
+      <h2 id="short-title">{ranking.picks.length === 0 ? 'Nothing qualifies' : 'A short list'}</h2>
+      <p>{shortListReason(ranking, choice)}</p>
+      {choice.volume !== 'all' && ranking.qualifyingAll > ranking.qualifying && (
+        <button type="button" className="button" onClick={onShowAll}>
+          Show all volumes
+        </button>
+      )}
+    </section>
+  );
+
+  const summary =
+    ranking.picks.length < FEW_PICKS
+      ? shortListReason(ranking, choice)
+      : `${ranking.picks.length} picks for ${formatGp(ranking.cashPerSlot)} per slot.`;
+
   return (
-    <p className="muted">
-      Updated {formatAgo(at, now)} · <time dateTime={generatedAt}>{formatManilaTime(at)}</time>{' '}
-      Manila time
-    </p>
+    <>
+      {/* Always present, so screen readers announce each change of the list. */}
+      <p className="visually-hidden" role="status">
+        {summary}
+      </p>
+      {short}
+      {ranking.picks.length > 0 && (
+        <ol className="list" aria-label="Picks">
+          {ranking.picks.map((pick) => (
+            <li key={pick.item.id}>
+              <PickRow
+                pick={pick}
+                settings={settings}
+                href={itemHref(window.location.search, pick.item.id)}
+                onOpen={() => onOpen(pick.item.id)}
+              />
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="note">
+        <strong>Nights:</strong> on how many of the last {settings.nights} nights both your buy and
+        your sell would have filled. Even the best items manage about 10 of 14.
+      </p>
+    </>
   );
 }
 
-export function App() {
-  const { state, retry } = usePicks();
-
+function PicksStates({ state, retry }: { state: State; retry: () => void }) {
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Overnight flips</h1>
-        {state.status === 'ready' ? (
-          <Freshness generatedAt={state.picks.generatedAt} />
-        ) : (
-          <p className="muted">Old School RuneScape</p>
-        )}
-      </header>
-
+    <>
       {state.status === 'loading' && (
         <ul className="list skeleton" aria-busy="true" aria-label="Loading picks">
-          <li />
-          <li />
-          <li />
+          {[1, 2, 3].map((row) => (
+            <li key={row} className="pick-placeholder" />
+          ))}
         </ul>
       )}
 
@@ -94,20 +289,100 @@ export function App() {
           </button>
         </section>
       )}
+    </>
+  );
+}
 
-      {state.status === 'ready' &&
-        (state.picks.items.length > 0 ? (
-          <ul className="list" aria-label="Picks">
-            {state.picks.items.slice(0, TOP_PICKS).map((item) => (
-              <li key={item.id}>{item.name}</li>
-            ))}
-          </ul>
-        ) : (
-          <section className="card" aria-labelledby="empty-title">
-            <h2 id="empty-title">Nothing qualifies right now</h2>
-            <p>The last update found no flips worth listing.</p>
-          </section>
-        ))}
+function Detail({
+  itemId,
+  state,
+  retry,
+  choice,
+  onBack,
+}: {
+  itemId: number;
+  state: State;
+  retry: () => void;
+  choice: Choice;
+  onBack: () => void;
+}) {
+  if (state.status !== 'ready') {
+    return (
+      <>
+        <BackButton onBack={onBack} />
+        <PicksStates state={state} retry={retry} />
+      </>
+    );
+  }
+  const item = state.picks.items.find((entry) => entry.id === itemId);
+  if (!item || !isPublishedItem(item)) {
+    return (
+      <>
+        <BackButton onBack={onBack} />
+        <section className="card" aria-labelledby="gone-title">
+          <h2 id="gone-title">Not in the latest update</h2>
+          <p>This item isn't among the flips the last hourly update looked at.</p>
+        </section>
+      </>
+    );
+  }
+  return (
+    <ItemDetail
+      item={item}
+      choice={choice}
+      settings={settingsFor(state.picks.settings)}
+      generatedAt={state.picks.generatedAt}
+      onBack={onBack}
+      notice={<StaleNotice generatedAt={state.picks.generatedAt} />}
+    />
+  );
+}
+
+export function App() {
+  const { state, retry } = usePicks();
+  const [choice, setChoice] = useChoice();
+  const { itemId, open, close } = useItem();
+
+  return (
+    <main className="page">
+      {/* The list stays mounted under an open item, so back finds it as it was. */}
+      <div hidden={itemId !== null}>
+        <header className="page-header">
+          <h1>Overnight flips</h1>
+          {state.status === 'ready' ? (
+            <Freshness generatedAt={state.picks.generatedAt} />
+          ) : (
+            <p className="muted">Old School RuneScape</p>
+          )}
+        </header>
+
+        <Controls
+          choice={choice}
+          cashPerSlot={cashPerSlot(choice.cash, choice.freeSlots)}
+          highVolumeShare={
+            (state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS)
+              .highVolumeShare
+          }
+          onChange={setChoice}
+        />
+
+        <PicksStates state={state} retry={retry} />
+
+        {state.status === 'ready' && (
+          <Picks
+            picks={state.picks}
+            choice={choice}
+            onShowAll={() => setChoice({ ...choice, volume: 'all' })}
+            onOpen={open}
+          />
+        )}
+      </div>
+
+      {itemId !== null && (
+        <Detail itemId={itemId} state={state} retry={retry} choice={choice} onBack={close} />
+      )}
+
+      <footer className="footer">Prices and icons: OSRS Wiki</footer>
     </main>
   );
 }

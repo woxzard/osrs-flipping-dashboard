@@ -78,10 +78,7 @@ function average(points: HourPoint[]): number | null {
  * buy window opens and ends when the following sell window closes; only
  * finished nights inside the history count, newest last.
  */
-function measureNights(history: HourPoint[], now: Date, settings: Settings): Night[] {
-  const first = history[0];
-  if (!first) return [];
-  const buyHours = hoursBetween(settings.buyStartHour, settings.buyEndHour);
+function nightClock(now: Date, settings: Settings) {
   const sellFrom = hoursBetween(settings.buyStartHour, settings.sellStartHour);
   const sellHours = hoursBetween(settings.sellStartHour, settings.sellEndHour);
   const shift = MANILA_OFFSET - settings.buyStartHour * HOUR;
@@ -91,6 +88,46 @@ function measureNights(history: HourPoint[], now: Date, settings: Settings): Nig
   // The newest night whose sell window has closed.
   let last = nightOf(Math.floor(now.getTime() / 1000));
   while (startOf(last) + (sellFrom + sellHours) * HOUR > now.getTime() / 1000) last -= 1;
+  return { sellFrom, sellHours, nightOf, startOf, last };
+}
+
+/**
+ * When the last `count` finished nights began (their buy window opened),
+ * oldest first: the dates of the published `nights`, for the page.
+ */
+export function nightStarts(now: Date, count: number, settings: Settings = SETTINGS): Date[] {
+  const { startOf, last } = nightClock(now, settings);
+  return Array.from({ length: count }, (_, index) => {
+    const night = last - count + 1 + index;
+    return new Date(startOf(night) * 1000);
+  });
+}
+
+/**
+ * My buy windows (while I sleep) that overlap `from`–`to`, in seconds since
+ * 1970, cut to that range: the shaded night hours on the page's chart.
+ */
+export function buyWindowsBetween(
+  from: number,
+  to: number,
+  settings: Settings = SETTINGS,
+): [number, number][] {
+  const buyHours = hoursBetween(settings.buyStartHour, settings.buyEndHour);
+  const { nightOf, startOf } = nightClock(new Date(to * 1000), settings);
+  const windows: [number, number][] = [];
+  for (let night = nightOf(from) - 1; startOf(night) < to; night += 1) {
+    const start = Math.max(startOf(night), from);
+    const end = Math.min(startOf(night) + buyHours * HOUR, to);
+    if (end > start) windows.push([start, end]);
+  }
+  return windows;
+}
+
+function measureNights(history: HourPoint[], now: Date, settings: Settings): Night[] {
+  const first = history[0];
+  if (!first) return [];
+  const buyHours = hoursBetween(settings.buyStartHour, settings.buyEndHour);
+  const { sellFrom, sellHours, nightOf, startOf, last } = nightClock(now, settings);
 
   const nights: Night[] = [];
   for (let night = last - settings.nights + 1; night <= last; night += 1) {
