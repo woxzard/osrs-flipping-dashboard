@@ -40,3 +40,8 @@ const wikiTitle = (title: string) => encodeURIComponent(title.replaceAll(' ', '_
 export function wikiIconUrl(icon: string): string {
   return `${WIKI}/images/${wikiTitle(icon)}`;
 }
+
+/** The item's page on the OSRS Wiki. */
+export function wikiPageUrl(name: string): string {
+  return `${WIKI}/w/${wikiTitle(name)}`;
+}

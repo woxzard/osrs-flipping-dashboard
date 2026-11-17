@@ -26,3 +26,29 @@ export function formatAgo(at: Date, now: Date): string {
   const days = Math.floor(elapsed / (24 * HOUR));
   return `${days} ${days === 1 ? 'day' : 'days'} ago`;
 }
+
+const manilaDay = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Manila',
+  day: 'numeric',
+  month: 'short',
+});
+
+const manilaWeekdayTime = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Manila',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Day in Manila: "16 Nov". */
+export function formatManilaDay(at: Date): string {
+  return manilaDay.format(at);
+}
+
+/** Day and time in Manila: "Mon 16 Nov, 03:00". */
+export function formatManilaDayTime(at: Date): string {
+  return manilaWeekdayTime.format(at);
+}
