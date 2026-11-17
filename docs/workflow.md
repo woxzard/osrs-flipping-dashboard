@@ -57,7 +57,7 @@ PRs into `main` (release and urgent fixes) are merged by the owner, which is the
 | `risk-gate.yml` (check **risk-gate**) | PRs into `next` | The rules above. Also creates the labels. |
 | `merge-when-green.yml` | After the checks finish | Merges a PR into `next` (squash) when **checks** and **risk-gate** are both green on its newest commit, unless it's a draft or has the `hold` label. Works on any GitHub plan (GitHub's own auto-merge needs branch protection, which private repos only get on paid plans). |
 | `next-branch.yml` | Something lands on `main` | Creates `next` from `main` if it doesn't exist; warns if `main` has a fix that `next` doesn't. |
-| `hourly-data.yml` | 7 minutes past every hour, from `main` only | Fetches prices, scores the flips and replaces the `data` branch with the fresh results. If the job fails, nothing is pushed and the last good results stay. Start it by hand: Actions → "Hourly data" → Run workflow. |
+| `hourly-data.yml` | 7 minutes past every hour, started by the outside timer (cron-job.org, `TODO-PC.md`); always runs `main` | Fetches prices, scores the flips and replaces the `data` branch with the fresh results. If the job fails, nothing is pushed and the last good results stay. Start it by hand: Actions → "Hourly data" → Run workflow. |
 | Dependabot (`.github/dependabot.yml`) | Weekly / monthly | Grouped minor/patch updates into `next`, labelled `risk:low`, so they merge themselves when checks pass. Major updates are left for a planned batch. |
 
 ## When something goes wrong
