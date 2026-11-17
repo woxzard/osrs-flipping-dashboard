@@ -116,3 +116,24 @@ test('fits a 320 px wide phone without sideways scrolling', async ({ page }) => 
   );
   expect(overflows).toBe(false);
 });
+
+test('the loading placeholders wait 0.3 s before showing, so a fast load never flashes', async ({
+  page,
+}) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.unroute('**/osrs-flipping-dashboard/data/picks.json');
+  await page.route('**/osrs-flipping-dashboard/data/picks.json', async (route) => {
+    await held;
+    await route.fulfill({ contentType: 'application/json', body: samplePicks });
+  });
+  await page.goto('/');
+
+  const placeholders = page.getByRole('list', { name: 'Loading picks' });
+  await expect(placeholders).toHaveCSS('opacity', '0');
+  await page.clock.runFor(400);
+  await expect(placeholders).not.toHaveCSS('opacity', '0');
+
+  release();
+  await expect(page.getByRole('list', { name: 'Picks' })).toBeVisible();
+});

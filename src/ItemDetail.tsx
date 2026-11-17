@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { formatExactGp, formatGp, formatPercent } from '../shared/format.ts';
 import type { HistoryFile, PublishedItem } from '../shared/picks.ts';
 import { fillWord, type Choice } from '../shared/rank.ts';
@@ -71,12 +71,15 @@ export function ItemDetail({
   settings,
   generatedAt,
   onBack,
+  notice,
 }: {
   item: PublishedItem;
   choice: Choice;
   settings: Settings;
   generatedAt: string;
   onBack: () => void;
+  /** Shown under the item's name: the stale-data warning. */
+  notice?: ReactNode;
 }) {
   const { state, retry } = useHistory(item.id);
   const perSlot = cashPerSlot(choice.cash, choice.freeSlots);
@@ -103,6 +106,7 @@ export function ItemDetail({
           {item.name}
         </h1>
       </header>
+      {notice}
 
       <dl className="pick-stats card">
         <div>
