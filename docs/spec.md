@@ -118,6 +118,7 @@ Icon + text, never colour alone:
 ### 7.7 Personal (stored on the phone)
 - **Reached by a bottom bar:** Picks · My flips · Watchlist · Settings. The tab is in the address (`?view=flips`); each list keeps its own scroll position.
 - **"I'm flipping this"** tick: hides the item from the picks, with a "Hidden · Undo" toast. A **My flips** list shows what's ticked so I can untick when sold.
+  - The button is on each pick and on the item screen. A flip keeps the offer as it was when ticked (buy, sell, quantity, profit) and shows how long ago; **Sold** (on the row or the item) removes it with "Marked sold · Undo". Ticked items stay hidden until marked sold; the tab bar shows how many there are.
 - **Watchlist** (pinned items) and **blocklist** (never show).
 - **Settings:** buy and sell window hours.
 - Acceptance: toasts go away on their own (about 2.5 s; about 5 s with Undo); Undo instead of "Are you sure?"; everything survives closing the browser.

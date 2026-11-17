@@ -4,7 +4,9 @@ import type { HistoryFile, PublishedItem } from '../shared/picks.ts';
 import { fillWord, type Choice } from '../shared/rank.ts';
 import { cashPerSlot, nightStarts, sizePick } from '../shared/scoring.ts';
 import type { Settings } from '../shared/settings.ts';
-import { formatManilaDay, formatManilaDayTime } from '../shared/time.ts';
+import { formatAgo, formatManilaDay, formatManilaDayTime } from '../shared/time.ts';
+import { useNow } from './Freshness.tsx';
+import type { Flip, Offer } from './personal.ts';
 import { loadHistory } from './data.ts';
 import { BackButton } from './BackButton.tsx';
 import { ItemIcon } from './ItemIcon.tsx';
@@ -65,6 +67,42 @@ function lastHourLine(history: HistoryFile, buyPrice: number, generatedAt: strin
     : prices;
 }
 
+/** "I'm flipping this", or since when I am, with Sold to finish. */
+export function FlipStatus({
+  flip,
+  canFlip,
+  onFlip,
+  onSold,
+}: {
+  flip?: Flip;
+  canFlip: boolean;
+  onFlip: () => void;
+  onSold: () => void;
+}) {
+  const now = useNow();
+  if (flip) {
+    return (
+      <div className="flip-status card">
+        <p>
+          <strong>You're flipping this</strong>{' '}
+          <span className="muted-inline">
+            · ticked {formatAgo(new Date(flip.at), now)}: {formatExactGp(flip.quantity)} at{' '}
+            {formatExactGp(flip.buyPrice)}
+          </span>
+        </p>
+        <button type="button" className="button secondary" onClick={onSold}>
+          Sold
+        </button>
+      </div>
+    );
+  }
+  return canFlip ? (
+    <button type="button" className="button" onClick={onFlip}>
+      I'm flipping this
+    </button>
+  ) : null;
+}
+
 export function ItemDetail({
   item,
   choice,
@@ -73,6 +111,9 @@ export function ItemDetail({
   backLabel,
   onBack,
   notice,
+  flip,
+  onFlip,
+  onSold,
 }: {
   item: PublishedItem;
   choice: Choice;
@@ -83,6 +124,11 @@ export function ItemDetail({
   onBack: () => void;
   /** Shown under the item's name: the stale-data warning. */
   notice?: ReactNode;
+  /** Set while I'm flipping this item. */
+  flip?: Flip;
+  /** "I'm flipping this", with the offer as sized now. */
+  onFlip: (offer: Offer) => void;
+  onSold: () => void;
 }) {
   const { state, retry } = useHistory(item.id);
   const perSlot = cashPerSlot(choice.cash, choice.freeSlots);
@@ -138,6 +184,19 @@ export function ItemDetail({
         </div>
       </dl>
       <p className="muted small">Sized for {formatGp(perSlot)} per slot.</p>
+      <FlipStatus
+        flip={flip}
+        canFlip={sized.quantity > 0}
+        onFlip={() =>
+          onFlip({
+            buyPrice: item.buyPrice,
+            sellPrice: item.sellPrice,
+            quantity: sized.quantity,
+            profit: sized.profit,
+          })
+        }
+        onSold={onSold}
+      />
 
       {item.flags.length > 0 && (
         <ul className="flags" aria-label="Warnings">

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { VIEW_NAME, VIEWS, viewHref, type View } from './route.ts';
 
 /** Simple line icons, drawn in the text colour. */
@@ -33,16 +33,31 @@ const ICONS: Record<View, ReactNode> = {
  */
 export function TabBar({
   current,
+  counts,
   search,
   onSelect,
 }: {
   current: View;
+  /** A number shown on a tab, such as how many flips are open. */
+  counts: Partial<Record<View, number>>;
   /** The address's query as it should be now, for the links. */
   search: string;
   onSelect: (view: View) => void;
 }) {
+  // Messages sit just above the bar, however tall large text makes it.
+  const bar = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = bar.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() =>
+      document.documentElement.style.setProperty('--tabbar-height', `${element.offsetHeight}px`),
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <nav className="tabbar" aria-label="Sections">
+    <nav className="tabbar" aria-label="Sections" ref={bar}>
       <ul>
         {VIEWS.map((view) => (
           <li key={view}>
@@ -58,7 +73,10 @@ export function TabBar({
               <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                 {ICONS[view]}
               </svg>
-              {VIEW_NAME[view]}
+              <span>
+                {VIEW_NAME[view]}
+                {(counts[view] ?? 0) > 0 && <span className="count"> {counts[view]}</span>}
+              </span>
             </a>
           </li>
         ))}

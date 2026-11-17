@@ -748,3 +748,88 @@ body {
 .card .facts + p {
   margin-top: 0.75rem;
 }
+
+/* "I'm flipping this" and "Sold": above the card's link, so a tap on them doesn't open the item. */
+.pick-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.pick-actions .button {
+  margin-top: 0.5rem;
+}
+
+.button.secondary {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--text);
+}
+
+.flip-status {
+  margin-top: 0.75rem;
+}
+
+.flip-status .button {
+  margin-top: 0.5rem;
+}
+
+.tabbar .count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* One message at a time, just above the tab bar. */
+.toast-region {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--tabbar-height, calc(3.5rem + env(safe-area-inset-bottom))) + 0.5rem);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 38rem;
+  min-height: 3rem;
+  padding: 0.25rem 0.5rem 0.25rem 1rem;
+  color: var(--bg);
+  background: var(--text);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
+  pointer-events: auto;
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast button {
+  min-width: 3rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  touch-action: manipulation;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
