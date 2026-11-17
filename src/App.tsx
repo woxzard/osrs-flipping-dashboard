@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PicksFile } from '../shared/picks.ts';
+import { rankPicks, settingsFor, type Choice } from '../shared/rank.ts';
 import { formatAgo, formatManilaTime } from '../shared/time.ts';
 import { loadPicks } from './data.ts';
+import { PickRow } from './PickRow.tsx';
 
 type State =
   | { status: 'loading' }
@@ -9,8 +11,8 @@ type State =
   | { status: 'error' }
   | { status: 'ready'; picks: PicksFile };
 
-/** The job lists every candidate, best first; the page shows the top ones. */
-const TOP_PICKS = 10;
+/** Until the controls arrive: 50m in one slot, every volume. */
+const DEFAULT_CHOICE: Choice = { cash: 50_000_000, freeSlots: 1, volume: 'all' };
 
 function usePicks() {
   const [state, setState] = useState<State>({ status: 'loading' });
@@ -56,6 +58,39 @@ function Freshness({ generatedAt }: { generatedAt: string }) {
   );
 }
 
+function Picks({ picks, choice }: { picks: PicksFile; choice: Choice }) {
+  const settings = useMemo(() => settingsFor(picks.settings), [picks.settings]);
+  const ranking = useMemo(
+    () => rankPicks(picks.items, choice, settings),
+    [picks.items, choice, settings],
+  );
+
+  if (ranking.picks.length === 0) {
+    return (
+      <section className="card" aria-labelledby="empty-title">
+        <h2 id="empty-title">Nothing qualifies right now</h2>
+        <p>The last update found no flips worth listing.</p>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <ol className="list" aria-label="Picks">
+        {ranking.picks.map((pick) => (
+          <li key={pick.item.id}>
+            <PickRow pick={pick} settings={settings} />
+          </li>
+        ))}
+      </ol>
+      <p className="note">
+        <strong>Nights:</strong> on how many of the last {settings.nights} nights both your buy and
+        your sell would have filled. Even the best items manage about 10 of 14.
+      </p>
+    </>
+  );
+}
+
 export function App() {
   const { state, retry } = usePicks();
 
@@ -72,9 +107,9 @@ export function App() {
 
       {state.status === 'loading' && (
         <ul className="list skeleton" aria-busy="true" aria-label="Loading picks">
-          <li />
-          <li />
-          <li />
+          {[1, 2, 3].map((row) => (
+            <li key={row} className="pick-placeholder" />
+          ))}
         </ul>
       )}
 
@@ -95,19 +130,8 @@ export function App() {
         </section>
       )}
 
-      {state.status === 'ready' &&
-        (state.picks.items.length > 0 ? (
-          <ul className="list" aria-label="Picks">
-            {state.picks.items.slice(0, TOP_PICKS).map((item) => (
-              <li key={item.id}>{item.name}</li>
-            ))}
-          </ul>
-        ) : (
-          <section className="card" aria-labelledby="empty-title">
-            <h2 id="empty-title">Nothing qualifies right now</h2>
-            <p>The last update found no flips worth listing.</p>
-          </section>
-        ))}
+      {state.status === 'ready' && <Picks picks={state.picks} choice={DEFAULT_CHOICE} />}
+      <footer className="footer">Prices and icons: OSRS Wiki</footer>
     </main>
   );
 }

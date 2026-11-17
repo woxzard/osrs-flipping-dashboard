@@ -26,3 +26,18 @@ export function formatGp(amount: number): string {
   }
   return `${sign}${value}`;
 }
+
+const exact = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+/** Exact gp, for prices typed into the Grand Exchange: 13751666 → "13,751,666". */
+export function formatExactGp(amount: number): string {
+  if (!Number.isFinite(amount)) return '–';
+  return exact.format(Math.trunc(amount) || 0); // never "-0"
+}
+
+/** A share as a percentage with one decimal, cut off: 0.04347 → "4.3%". */
+export function formatPercent(share: number): string {
+  if (!Number.isFinite(share)) return '–';
+  const tenths = Math.trunc(Math.round(share * 1e6) / 1e3);
+  return `${tenths < 0 ? '-' : ''}${Math.floor(Math.abs(tenths) / 10)}.${Math.abs(tenths) % 10}%`;
+}
