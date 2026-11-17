@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { formatExactGp, formatGp, formatPercent } from '../shared/format.ts';
 import { fillWord, type RankedPick } from '../shared/rank.ts';
 import { ItemIcon } from './ItemIcon.tsx';
+import { RowLink } from './RowLink.tsx';
 import type { Settings } from '../shared/settings.ts';
 import { flagText, TREND_TEXT } from './labels.ts';
 
@@ -10,12 +12,18 @@ export function PickRow({
   settings,
   href,
   onOpen,
+  watched = false,
+  actions,
 }: {
   pick: RankedPick;
   settings: Settings;
   /** The item's own address, so the row is a real link (new tab, copy link). */
   href: string;
   onOpen: () => void;
+  /** Marked "Watching" when it's on my watchlist. */
+  watched?: boolean;
+  /** The row's buttons ("I'm flipping this", "Remove"), kept above the card's link. */
+  actions: ReactNode;
 }) {
   const { item } = pick;
   // Out of the full count even for a newer item, as the ranking does (docs/spec.md §5).
@@ -27,18 +35,13 @@ export function PickRow({
         <ItemIcon key={item.icon} icon={item.icon} name={item.name} />
         <h2 className="pick-name">
           {/* The link covers the whole card (see .row-link in styles.css). */}
-          <a
-            className="row-link"
-            href={href}
-            onClick={(event) => {
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-              event.preventDefault();
-              onOpen();
-            }}
-          >
-            {item.name}
-          </a>
+          <RowLink href={href} name={item.name} onOpen={onOpen} />
         </h2>
+        {watched && (
+          <span className="tag">
+            <span aria-hidden="true">★</span> Watching
+          </span>
+        )}
       </header>
       <dl className="pick-stats">
         <div>
@@ -81,6 +84,7 @@ export function PickRow({
           ))}
         </ul>
       )}
+      <div className="pick-actions">{actions}</div>
     </article>
   );
 }

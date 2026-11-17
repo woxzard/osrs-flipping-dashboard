@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { PicksFile } from '../shared/picks.ts';
+import type { PicksFile, PublishedItem } from '../shared/picks.ts';
 import { formatGp } from '../shared/format.ts';
 import {
   FEW_PICKS,
@@ -7,6 +7,7 @@ import {
   rankPicks,
   settingsFor,
   type Choice,
+  type RankedPick,
   type Ranking,
 } from '../shared/rank.ts';
 import { cashPerSlot } from '../shared/scoring.ts';
@@ -16,9 +17,29 @@ import { BackButton } from './BackButton.tsx';
 import { Controls } from './Controls.tsx';
 import { Freshness, isStale, StaleNotice } from './Freshness.tsx';
 import { loadPicks } from './data.ts';
-import { ItemDetail } from './ItemDetail.tsx';
+import { BlockControl, FlipStatus, ItemDetail, WatchButton } from './ItemDetail.tsx';
 import { PickRow } from './PickRow.tsx';
-import { itemHref, readItemId, restoreListScroll, saveListScroll, withoutItem } from './route.ts';
+import {
+  itemHref,
+  readItemId,
+  readView,
+  savedScroll,
+  saveScroll,
+  VIEW_NAME,
+  viewHref,
+  withoutItem,
+  type View,
+} from './route.ts';
+import { MyFlips } from './Lists.tsx';
+import { Watchlist } from './Watchlist.tsx';
+import type { Flip, Offer } from './personal.ts';
+import { usePersonal, type ItemRef } from './usePersonal.ts';
+import { useMyHours } from './useMyHours.ts';
+import { formatHours, loadHours, storeHours } from './hours.ts';
+import type { WindowHours } from '../shared/rescore.ts';
+
+import { SettingsScreen } from './SettingsScreen.tsx';
+import { TabBar } from './TabBar.tsx';
 
 type State =
   | { status: 'loading' }
@@ -59,36 +80,75 @@ function useChoice() {
 }
 
 /**
- * The open item, kept in the address (`?item=27226`). Opening one adds a
- * history entry, so back (button, gesture or the page's own) returns to the
- * list, which stays mounted underneath at the same scroll position.
+ * Where the page is: the tab and the open item, both kept in the address.
+ * Opening an item or switching tabs adds a history entry, so back (button,
+ * gesture or the page's own) returns to the list it came from, which stays
+ * mounted underneath, at the same scroll position.
  */
-function useItem() {
-  const [itemId, setItemId] = useState<number | null>(() => readItemId(window.location.search));
+function useNav(picksShown: boolean) {
+  const [place, setPlace] = useState(readPlace);
 
   useEffect(() => {
-    const onPop = () => setItemId(readItemId(window.location.search));
+    const onPop = () => setPlace(readPlace());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Back on the list from an item: put it where it was.
-  const openedFrom = useRef<number | null>(itemId);
+  // A list position waiting to be put back: on arriving at a list (back from
+  // an item, or another tab) and on a refresh. It waits for the picks to load,
+  // so the page is tall enough to get there.
+  const pending = useRef<number | null>(
+    place.itemId === null ? savedScroll(window.location.search) : null,
+  );
+  const ready = place.view !== 'picks' || picksShown;
+  const previous = useRef(place);
   useLayoutEffect(() => {
-    if (itemId === null && openedFrom.current !== null) {
-      restoreListScroll(window.location.search);
+    const before = previous.current;
+    previous.current = place;
+    if (before.view !== place.view || before.itemId !== place.itemId) {
+      pending.current = place.itemId === null ? (savedScroll(window.location.search) ?? 0) : null;
     }
-    openedFrom.current = itemId;
-  }, [itemId]);
+    if (pending.current !== null && ready) {
+      window.scrollTo(0, pending.current);
+      pending.current = null;
+    }
+  }, [place, ready]);
 
-  const open = useCallback((id: number) => {
-    saveListScroll(window.location.search, window.scrollY);
-    window.history.pushState({ fromList: true }, '', itemHref(window.location.search, id));
-    // The page itself restores the list's scroll when coming back to it, for
-    // this entry only; the list's own entry keeps the browser's restoring.
-    window.history.scrollRestoration = 'manual';
-    setItemId(id);
+  // Remember where each list is scrolled to (not an item: it starts at the
+  // top), at most once a frame, and not while a position waits to go back.
+  const save = useCallback(() => {
+    if (pending.current === null && readItemId(window.location.search) === null) {
+      saveScroll(window.location.search, window.scrollY);
+    }
   }, []);
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        save();
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [save]);
+
+  const go = useCallback(
+    (href: string) => {
+      save();
+      window.history.pushState({ fromList: true }, '', href);
+      // The page puts lists back itself on the entries it makes.
+      window.history.scrollRestoration = 'manual';
+      setPlace(readPlace());
+    },
+    [save],
+  );
+
+  const open = useCallback((id: number) => go(itemHref(window.location.search, id)), [go]);
 
   const close = useCallback(() => {
     if ((window.history.state as { fromList?: boolean } | null)?.fromList) {
@@ -97,11 +157,35 @@ function useItem() {
     }
     // Opened from a link: there's no list entry to go back to, so make one.
     window.history.replaceState(null, '', withoutItem(window.location.search));
-    setItemId(null);
+    setPlace(readPlace());
   }, []);
 
-  return { itemId, open, close };
+  const showView = useCallback(
+    (view: View) => {
+      const current = readPlace();
+      if (view !== current.view) {
+        go(viewHref(window.location.search, view));
+      } else if (current.itemId !== null) {
+        close(); // the open item's own tab: back to its list
+      } else {
+        window.scrollTo(0, 0); // the tab already shown: back to its top
+      }
+    },
+    [go, close],
+  );
+
+  return { ...place, open, close, showView };
 }
+
+function readPlace() {
+  return {
+    view: readView(window.location.search),
+    itemId: readItemId(window.location.search),
+  };
+}
+
+/** An empty set that keeps its identity between renders. */
+const NONE: ReadonlySet<number> = new Set();
 
 const VOLUME_NAME = { all: '', high: 'High-volume ', low: 'Low-volume ' } as const;
 
@@ -193,21 +277,59 @@ function usePicks() {
 function Picks({
   picks,
   choice,
+  flippingIds,
+  blockedIds,
+  watched,
   onShowAll,
   onOpen,
+  onFlip,
 }: {
   picks: PicksFile;
   choice: Choice;
+  /** Items kept out of the picks: the ones I'm flipping and the ones I blocked. */
+  flippingIds: ReadonlySet<number>;
+  blockedIds: ReadonlySet<number>;
+  /** Items on my watchlist, marked in the list. */
+  watched: ReadonlySet<number>;
   onShowAll: () => void;
   onOpen: (id: number) => void;
+  onFlip: (pick: RankedPick) => void;
 }) {
   const settings = useMemo(() => settingsFor(picks.settings), [picks.settings]);
   const ranking = useMemo(
-    () => rankPicks(picks.items, choice, settings),
-    [picks.items, choice, settings],
+    () =>
+      rankPicks(
+        picks.items.filter((item) => !flippingIds.has(item.id) && !blockedIds.has(item.id)),
+        choice,
+        settings,
+      ),
+    [picks.items, flippingIds, blockedIds, choice, settings],
   );
+  // How many of my hidden items would be in this list: only those are worth a word.
+  const hiddenHere = useMemo(() => {
+    const qualifying = (keep: (id: number) => boolean) =>
+      rankPicks(
+        picks.items.filter((item) => keep(item.id)),
+        choice,
+        settings,
+      ).qualifying;
+    const withFlips = qualifying((id) => !blockedIds.has(id));
+    return {
+      flipped: withFlips - ranking.qualifying,
+      blocked: qualifying(() => true) - withFlips,
+    };
+  }, [picks.items, blockedIds, choice, settings, ranking.qualifying]);
+  const hiddenNote = [
+    hiddenHere.flipped === 1 && "1 item you're flipping (My flips)",
+    hiddenHere.flipped > 1 && `${hiddenHere.flipped} items you're flipping (My flips)`,
+    hiddenHere.blocked > 0 && `${hiddenHere.blocked} blocked (Settings)`,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  // A ticked row disappears: keep keyboard and screen-reader focus on the list.
+  const list = useRef<HTMLOListElement>(null);
 
-  if (ranking.published === 0) {
+  if (!picks.items.some(isPublishedItem)) {
     return (
       <section className="card" aria-labelledby="empty-title">
         <h2 id="empty-title">Nothing qualifies right now</h2>
@@ -219,7 +341,10 @@ function Picks({
   const short = ranking.picks.length < FEW_PICKS && (
     <section className="card" aria-labelledby="short-title">
       <h2 id="short-title">{ranking.picks.length === 0 ? 'Nothing qualifies' : 'A short list'}</h2>
-      <p>{shortListReason(ranking, choice)}</p>
+      <p>
+        {shortListReason(ranking, choice)}
+        {hiddenNote && ` Also not shown: ${hiddenNote}.`}
+      </p>
       {choice.volume !== 'all' && ranking.qualifyingAll > ranking.qualifying && (
         <button type="button" className="button" onClick={onShowAll}>
           Show all volumes
@@ -241,7 +366,7 @@ function Picks({
       </p>
       {short}
       {ranking.picks.length > 0 && (
-        <ol className="list" aria-label="Picks">
+        <ol className="list" aria-label="Picks" ref={list} tabIndex={-1}>
           {ranking.picks.map((pick) => (
             <li key={pick.item.id}>
               <PickRow
@@ -249,16 +374,46 @@ function Picks({
                 settings={settings}
                 href={itemHref(window.location.search, pick.item.id)}
                 onOpen={() => onOpen(pick.item.id)}
+                watched={watched.has(pick.item.id)}
+                actions={
+                  <button
+                    type="button"
+                    className="button secondary"
+                    aria-label={`I'm flipping this: ${pick.item.name}`}
+                    onClick={() => {
+                      onFlip(pick);
+                      list.current?.focus({ preventScroll: true });
+                    }}
+                  >
+                    I'm flipping this
+                  </button>
+                }
               />
             </li>
           ))}
         </ol>
+      )}
+      {hiddenNote && ranking.picks.length >= FEW_PICKS && (
+        <p className="note">Not shown: {hiddenNote}.</p>
       )}
       <p className="note">
         <strong>Nights:</strong> on how many of the last {settings.nights} nights both your buy and
         your sell would have filled. Even the best items manage about 10 of 14.
       </p>
     </>
+  );
+}
+
+/** While the phone scores with my hours: how far it is. */
+function ScoringProgress({ done, total }: { done: number; total: number }) {
+  return (
+    <section className="card" aria-labelledby="scoring-title">
+      <h2 id="scoring-title">Scoring with your night hours</h2>
+      <p>
+        {done} of {total} items. The phone does this once after each hourly update.
+      </p>
+      <progress className="progress" max={total} value={done} aria-labelledby="scoring-title" />
+    </section>
   );
 }
 
@@ -298,18 +453,46 @@ function Detail({
   state,
   retry,
   choice,
+  backLabel,
   onBack,
+  flip,
+  onFlip,
+  onSold,
+  watched,
+  onWatch,
+  onUnwatch,
+  blocked,
+  onBlock,
+  onUnblock,
+  unscorable,
+  saved,
 }: {
   itemId: number;
   state: State;
   retry: () => void;
   choice: Choice;
+  backLabel: string;
   onBack: () => void;
+  flip?: Flip;
+  onFlip: (item: PublishedItem, offer: Offer) => void;
+  onSold: () => void;
+  watched: boolean;
+  onWatch: (item: ItemRef) => void;
+  onUnwatch: () => void;
+  blocked: boolean;
+  onBlock: (item: ItemRef) => void;
+  onUnblock: () => void;
+  /** In the update, but not scorable with my night hours. */
+  unscorable: boolean;
+  /** The item as on my lists, for when the update doesn't have it. */
+  saved?: ItemRef;
 }) {
+  // Kept from when the item was opened, so unwatching here doesn't rename the screen.
+  const [known] = useState(saved);
   if (state.status !== 'ready') {
     return (
       <>
-        <BackButton onBack={onBack} />
+        <BackButton label={backLabel} onBack={onBack} />
         <PicksStates state={state} retry={retry} />
       </>
     );
@@ -318,11 +501,26 @@ function Detail({
   if (!item || !isPublishedItem(item)) {
     return (
       <>
-        <BackButton onBack={onBack} />
+        <BackButton label={backLabel} onBack={onBack} />
         <section className="card" aria-labelledby="gone-title">
-          <h2 id="gone-title">Not in the latest update</h2>
-          <p>This item isn't among the flips the last hourly update looked at.</p>
+          <h2 id="gone-title">{known?.name ?? 'Not in the latest update'}</h2>
+          <p>
+            {unscorable
+              ? "Your night hours don't leave enough trading in its history to score it this hour."
+              : `${known ? 'Not in the latest update: it' : 'This item'} isn't among the flips the last hourly update looked at.`}
+          </p>
         </section>
+        {flip && <FlipStatus flip={flip} canFlip={false} onFlip={() => {}} onSold={onSold} />}
+        {known && (
+          <div className="detail-actions">
+            <WatchButton watched={watched} onWatch={() => onWatch(known)} onUnwatch={onUnwatch} />
+          </div>
+        )}
+        {known && (
+          <div className="detail-apart">
+            <BlockControl blocked={blocked} onBlock={() => onBlock(known)} onUnblock={onUnblock} />
+          </div>
+        )}
       </>
     );
   }
@@ -332,21 +530,91 @@ function Detail({
       choice={choice}
       settings={settingsFor(state.picks.settings)}
       generatedAt={state.picks.generatedAt}
+      backLabel={backLabel}
       onBack={onBack}
       notice={<StaleNotice generatedAt={state.picks.generatedAt} />}
+      flip={flip}
+      onFlip={(offer) => onFlip(item, offer)}
+      onSold={onSold}
+      watched={watched}
+      onWatch={() => onWatch(item)}
+      onUnwatch={onUnwatch}
+      blocked={blocked}
+      onBlock={() => onBlock(item)}
+      onUnblock={onUnblock}
     />
   );
 }
 
+/** My night hours, kept on this phone; null means the job's. */
+function useHours() {
+  const [hours, setHours] = useState<WindowHours | null>(loadHours);
+  const [unsaved, setUnsaved] = useState(false);
+  const change = useCallback((next: WindowHours | null) => {
+    setHours(next);
+    setUnsaved(!storeHours(next));
+  }, []);
+  return { hours, unsaved, change };
+}
+
 export function App() {
-  const { state, retry } = usePicks();
+  const { state: loaded, retry: reload } = usePicks();
+  const { hours, unsaved: hoursUnsaved, change: setHours } = useHours();
+  // With my own hours, the picks are scored here first.
+  const mine = useMyHours(loaded.status === 'ready' ? loaded.picks : null, hours);
+  const state = useMemo<State>(() => {
+    switch (mine.state.status) {
+      case 'ready':
+        return { status: 'ready', picks: mine.state.picks };
+      case 'scoring':
+        return { status: 'loading' };
+      case 'error':
+        return { status: 'error' };
+      default:
+        return loaded;
+    }
+  }, [mine.state, loaded]);
+  const retry = mine.state.status === 'error' ? mine.retry : reload;
   const [choice, setChoice] = useChoice();
-  const { itemId, open, close } = useItem();
+  const { view, itemId, open, close, showView } = useNav(state.status !== 'loading');
+  const settings = state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS;
+  const onList = itemId === null;
+  const { personal, unsaved, startFlip, sold, watch, unwatch, block, unblock } = usePersonal();
+  const watchedIds = useMemo(
+    () => new Set(personal.watch.map((saved) => saved.id)),
+    [personal.watch],
+  );
+  const unscored = mine.state.status === 'ready' ? mine.state.unscored : NONE;
+  const published = useMemo(
+    () => (state.status === 'ready' ? state.picks.items.filter(isPublishedItem) : []),
+    [state],
+  );
+  const sellNow = useMemo(
+    () => new Map(published.map((item) => [item.id, item.sellPrice])),
+    [published],
+  );
+  const blockedIds = useMemo(
+    () => new Set(personal.block.map((saved) => saved.id)),
+    [personal.block],
+  );
+  const flippingIds = useMemo(
+    () => new Set(personal.flips.map((flip) => flip.id)),
+    [personal.flips],
+  );
+  const flipOf = (id: number | null) => personal.flips.find((flip) => flip.id === id);
+
+  // Say which screen this is (an item names itself).
+  useEffect(() => {
+    if (onList) {
+      document.title =
+        view === 'picks' ? 'OSRS overnight flips' : `${VIEW_NAME[view]} · Overnight flips`;
+    }
+  }, [view, onList]);
 
   return (
     <main className="page">
-      {/* The list stays mounted under an open item, so back finds it as it was. */}
-      <div hidden={itemId !== null}>
+      {/* Every list stays mounted under an open item or another tab, so back finds it as it was. */}
+      <div hidden={!onList || view !== 'picks'}>
         <header className="page-header">
           <h1>Overnight flips</h1>
           {state.status === 'ready' ? (
@@ -354,35 +622,126 @@ export function App() {
           ) : (
             <p className="muted">Old School RuneScape</p>
           )}
+          {mine.state.status === 'ready' && hours && (
+            <p className="muted small">
+              Scored on this phone with your night hours: {formatHours(hours)}.
+            </p>
+          )}
         </header>
 
         <Controls
           choice={choice}
           cashPerSlot={cashPerSlot(choice.cash, choice.freeSlots)}
-          highVolumeShare={
-            (state.status === 'ready' ? settingsFor(state.picks.settings) : SETTINGS)
-              .highVolumeShare
-          }
+          highVolumeShare={settings.highVolumeShare}
           onChange={setChoice}
         />
 
-        <PicksStates state={state} retry={retry} />
+        {mine.state.status === 'scoring' ? (
+          <ScoringProgress done={mine.state.done} total={mine.state.total} />
+        ) : (
+          <PicksStates state={state} retry={retry} />
+        )}
 
         {state.status === 'ready' && (
           <Picks
             picks={state.picks}
             choice={choice}
+            flippingIds={flippingIds}
+            blockedIds={blockedIds}
+            watched={watchedIds}
             onShowAll={() => setChoice({ ...choice, volume: 'all' })}
             onOpen={open}
+            onFlip={(pick) =>
+              startFlip(pick.item, {
+                buyPrice: pick.item.buyPrice,
+                sellPrice: pick.item.sellPrice,
+                quantity: pick.quantity,
+                profit: pick.profit,
+              })
+            }
           />
         )}
       </div>
 
+      <div hidden={!onList || view !== 'flips'}>
+        <MyFlips
+          shown={onList && view === 'flips'}
+          flips={personal.flips}
+          sellNow={sellNow}
+          unsaved={unsaved}
+          onOpen={open}
+          onSold={sold}
+          onShowPicks={() => showView('picks')}
+        />
+      </div>
+      <div hidden={!onList || view !== 'watch'}>
+        <Watchlist
+          shown={onList && view === 'watch'}
+          watch={personal.watch}
+          watched={watchedIds}
+          unscored={unscored}
+          items={published}
+          status={state.status}
+          retry={retry}
+          choice={choice}
+          settings={settings}
+          flipping={flippingIds}
+          blocked={blockedIds}
+          unsaved={unsaved}
+          onWatch={(item) => watch(item, true)}
+          onUnwatch={unwatch}
+          onOpen={open}
+          onShowPicks={() => showView('picks')}
+        />
+      </div>
+      <div hidden={!onList || view !== 'settings'}>
+        <SettingsScreen
+          jobSettings={loaded.status === 'ready' ? settingsFor(loaded.picks.settings) : SETTINGS}
+          myHours={hours}
+          hoursUnsaved={hoursUnsaved}
+          onHours={setHours}
+          blocked={personal.block}
+          unsaved={unsaved}
+          onUnblock={unblock}
+          onOpen={open}
+        />
+      </div>
+
       {itemId !== null && (
-        <Detail itemId={itemId} state={state} retry={retry} choice={choice} onBack={close} />
+        <Detail
+          key={itemId}
+          itemId={itemId}
+          state={state}
+          retry={retry}
+          choice={choice}
+          backLabel={VIEW_NAME[view]}
+          onBack={close}
+          flip={flipOf(itemId)}
+          onFlip={startFlip}
+          onSold={() => sold(itemId)}
+          watched={watchedIds.has(itemId)}
+          onWatch={watch}
+          onUnwatch={() => unwatch(itemId)}
+          blocked={blockedIds.has(itemId)}
+          onBlock={block}
+          onUnblock={() => unblock(itemId)}
+          unscorable={unscored.has(itemId)}
+          saved={
+            flipOf(itemId) ??
+            personal.watch.find((entry) => entry.id === itemId) ??
+            personal.block.find((entry) => entry.id === itemId)
+          }
+        />
       )}
 
       <footer className="footer">Prices and icons: OSRS Wiki</footer>
+
+      <TabBar
+        current={view}
+        counts={{ flips: personal.flips.length }}
+        search={writeChoice(choice, window.location.search)}
+        onSelect={showView}
+      />
     </main>
   );
 }

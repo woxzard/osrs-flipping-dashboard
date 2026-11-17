@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatExactGp, formatGp, formatPercent } from '../shared/format.ts';
 import type { HistoryFile, PublishedItem } from '../shared/picks.ts';
 import { fillWord, type Choice } from '../shared/rank.ts';
 import { cashPerSlot, nightStarts, sizePick } from '../shared/scoring.ts';
 import type { Settings } from '../shared/settings.ts';
-import { formatManilaDay, formatManilaDayTime } from '../shared/time.ts';
+import { formatAgo, formatManilaDay, formatManilaDayTime } from '../shared/time.ts';
+import { useNow } from './Freshness.tsx';
+import { formatHour } from './hours.ts';
+import { endsNextDay } from '../shared/rescore.ts';
+import type { Flip, Offer } from './personal.ts';
 import { loadHistory } from './data.ts';
 import { BackButton } from './BackButton.tsx';
 import { ItemIcon } from './ItemIcon.tsx';
@@ -65,21 +69,147 @@ function lastHourLine(history: HistoryFile, buyPrice: number, generatedAt: strin
     : prices;
 }
 
+/** "I'm flipping this", or since when I am, with Sold to finish. */
+export function FlipStatus({
+  flip,
+  canFlip,
+  onFlip,
+  onSold,
+}: {
+  flip?: Flip;
+  canFlip: boolean;
+  onFlip: () => void;
+  onSold: () => void;
+}) {
+  const now = useNow();
+  if (flip) {
+    return (
+      <div className="flip-status card">
+        <p>
+          <strong>You're flipping this</strong>{' '}
+          <span className="muted-inline">
+            · ticked {formatAgo(new Date(flip.at), now)}: {formatExactGp(flip.quantity)} at{' '}
+            {formatExactGp(flip.buyPrice)}
+          </span>
+        </p>
+        <button type="button" className="button secondary" onClick={onSold}>
+          Sold
+        </button>
+      </div>
+    );
+  }
+  return canFlip ? (
+    <button type="button" className="button" onClick={onFlip}>
+      I'm flipping this
+    </button>
+  ) : null;
+}
+
+/** Watch / Watching: a toggle that follows the item on my watchlist. */
+export function WatchButton({
+  watched,
+  onWatch,
+  onUnwatch,
+}: {
+  watched: boolean;
+  onWatch: () => void;
+  onUnwatch: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="button secondary"
+      aria-pressed={watched}
+      onClick={watched ? onUnwatch : onWatch}
+    >
+      <span aria-hidden="true">{watched ? '★' : '☆'}</span> {watched ? 'Watching' : 'Watch'}
+    </button>
+  );
+}
+
+/**
+ * "Never show": kept apart from the other actions and quieter, so a slip of
+ * the thumb can't hit it; Undo covers the rest. Once blocked, says so with
+ * "Show again".
+ */
+export function BlockControl({
+  blocked,
+  onBlock,
+  onUnblock,
+}: {
+  blocked: boolean;
+  onBlock: () => void;
+  onUnblock: () => void;
+}) {
+  // The tapped button is replaced: put focus on what replaced it.
+  const control = useRef<HTMLButtonElement>(null);
+  const changed = useRef(false);
+  useEffect(() => {
+    if (changed.current) control.current?.focus({ preventScroll: true });
+  }, [blocked]);
+  const toggle = (action: () => void) => () => {
+    changed.current = true;
+    action();
+  };
+  return blocked ? (
+    <div className="card blocked-status">
+      <p>
+        <strong>Blocked:</strong> never shown in the picks.
+      </p>
+      <button type="button" className="button secondary" ref={control} onClick={toggle(onUnblock)}>
+        Show again
+      </button>
+    </div>
+  ) : (
+    <button
+      type="button"
+      className="link-button block-button"
+      ref={control}
+      onClick={toggle(onBlock)}
+    >
+      <span aria-hidden="true">⊘</span> Never show this item
+    </button>
+  );
+}
+
 export function ItemDetail({
   item,
   choice,
   settings,
   generatedAt,
+  backLabel,
   onBack,
   notice,
+  flip,
+  onFlip,
+  onSold,
+  watched,
+  onWatch,
+  onUnwatch,
+  blocked,
+  onBlock,
+  onUnblock,
 }: {
   item: PublishedItem;
   choice: Choice;
   settings: Settings;
   generatedAt: string;
+  /** The list it was opened from, for the back button. */
+  backLabel: string;
   onBack: () => void;
   /** Shown under the item's name: the stale-data warning. */
   notice?: ReactNode;
+  /** Set while I'm flipping this item. */
+  flip?: Flip;
+  /** "I'm flipping this", with the offer as sized now. */
+  onFlip: (offer: Offer) => void;
+  onSold: () => void;
+  watched: boolean;
+  onWatch: () => void;
+  onUnwatch: () => void;
+  blocked: boolean;
+  onBlock: () => void;
+  onUnblock: () => void;
 }) {
   const { state, retry } = useHistory(item.id);
   const perSlot = cashPerSlot(choice.cash, choice.freeSlots);
@@ -99,7 +229,7 @@ export function ItemDetail({
 
   return (
     <article className="detail" aria-labelledby="detail-title">
-      <BackButton onBack={onBack} />
+      <BackButton label={backLabel} onBack={onBack} />
       <header className="pick-head detail-head">
         <ItemIcon key={item.icon} icon={item.icon} name={item.name} />
         <h1 id="detail-title" className="pick-name">
@@ -135,6 +265,22 @@ export function ItemDetail({
         </div>
       </dl>
       <p className="muted small">Sized for {formatGp(perSlot)} per slot.</p>
+      <FlipStatus
+        flip={flip}
+        canFlip={sized.quantity > 0}
+        onFlip={() =>
+          onFlip({
+            buyPrice: item.buyPrice,
+            sellPrice: item.sellPrice,
+            quantity: sized.quantity,
+            profit: sized.profit,
+          })
+        }
+        onSold={onSold}
+      />
+      <div className="detail-actions">
+        <WatchButton watched={watched} onWatch={onWatch} onUnwatch={onUnwatch} />
+      </div>
 
       {item.flags.length > 0 && (
         <ul className="flags" aria-label="Warnings">
@@ -182,8 +328,8 @@ export function ItemDetail({
         </h2>
         <p className="muted small">
           Would both your buy and your sell have filled? Each night runs from{' '}
-          {String(settings.buyStartHour).padStart(2, '0')}:00 to{' '}
-          {String(settings.sellEndHour).padStart(2, '0')}:00 the next day, Manila time.
+          {formatHour(settings.buyStartHour)} to {formatHour(settings.sellEndHour)}
+          {endsNextDay(settings) ? ' the next day' : ''}, Manila time.
         </p>
         <ol className="nights" aria-label="Nights, oldest first">
           {item.nights.map((hit, index) => {
@@ -233,6 +379,10 @@ export function ItemDetail({
       <a className="wiki-link" href={wikiPageUrl(item.name)} target="_blank" rel="noreferrer">
         {item.name} on the OSRS Wiki <span aria-hidden="true">↗</span>
       </a>
+
+      <div className="detail-apart">
+        <BlockControl blocked={blocked} onBlock={onBlock} onUnblock={onUnblock} />
+      </div>
     </article>
   );
 }

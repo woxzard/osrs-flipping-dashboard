@@ -10,13 +10,22 @@ export const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
 export const isStale = (at: Date, now: Date): boolean =>
   now.getTime() - at.getTime() > STALE_AFTER_MS;
 
-/** The current time, refreshed often enough for "23 min ago" to stay true. */
-function useNow(): Date {
+/**
+ * The current time, refreshed often enough for "23 min ago" to stay true.
+ * Paused while `running` is false (a tab that isn't shown).
+ */
+export function useNow(running = true): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(timer);
-  }, []);
+    if (!running) return;
+    const tick = () => setNow(new Date());
+    const catchUp = setTimeout(tick, 0); // shown again: right away, not in 30 s
+    const timer = setInterval(tick, 30_000);
+    return () => {
+      clearTimeout(catchUp);
+      clearInterval(timer);
+    };
+  }, [running]);
   return now;
 }
 

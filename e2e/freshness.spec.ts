@@ -18,6 +18,7 @@ test('just under two hours old is still fine; just over warns, while the page st
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByText('Updated 23 min ago')).toBeVisible(); // its timer is running
   await page.clock.fastForward('01:35:00'); // 1 h 58 min old
   await expect(page.getByText('Updated 1 h 58 min ago')).toBeVisible();
   await expect(page.getByText(warning)).toHaveCount(0);
@@ -45,14 +46,19 @@ test('coming back to the page fetches newer prices instead of warning about an o
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByText('Updated 23 min ago')).toBeVisible(); // its timer is running
   await page.clock.fastForward('02:10:00');
   await expect(page.getByText(warning)).toBeVisible();
 
+  // The page checks at most once a minute; jumping the clock can make its own
+  // 5-minute check land just now, so come back a minute later, as a phone would.
+  await page.clock.fastForward('01:00');
+
   // The job has published since: the page picks it up when it comes back into view.
   const newer = JSON.parse(samplePicks) as { generatedAt: string };
-  newer.generatedAt = '2026-11-17T07:07:00Z';
+  newer.generatedAt = '2026-11-17T07:08:00Z';
   await servePicks(page, { status: 200, body: JSON.stringify(newer) });
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await expect(page.getByText('Updated 3 min ago · 15:07 Manila time')).toBeVisible();
+  await expect(page.getByText('Updated 3 min ago · 15:08 Manila time')).toBeVisible();
   await expect(page.getByText(warning)).toHaveCount(0);
 });
