@@ -53,3 +53,7 @@
 | A night with no trades on a side counts as a miss; fewer than 5 measured nights, or prices too rare for a 70% level, means no score | Thin items aren't given prices the history can't support. |
 | Trend: straight-line slope of the daily level over 7 days; under 0.5% a day is flat. Falling halves the rank and raises the flag | Starting values, tuned in the backtest batch. |
 | Flag starting values: spike = today 25% above the usual level; thin = under 30 items a night in my buy window; tax-heavy = tax is at least half the margin; stale = a side hasn't traded for 6 hours | Starting values, all in `shared/settings.ts`. |
+| Candidates are ranked by gp traded in the last 24 hours (not item count) before the 300 cap | Item count would fill the list with cheap stackables; gp traded finds the items worth flipping. |
+| The run fails, publishing nothing, when: a list request fails; the lists cover under 2,000 items; the newest trade is over 2 hours old; under 100 candidates or under 50 scored items; more than 10% of history requests fail | "The Wiki failed or returned nonsense". A few failed history requests only drop those items. |
+| The results file lists every scored candidate, best first for 50m in one slot; until the dashboard batch the page shows the first ten | The page has no cash or slot controls yet. Unprofitable candidates stay in the file, at the bottom, for the watchlist later. |
+| Each item's history file keeps 16 days of hours as short rows | Covers the 14 measured nights plus today; about 12 KB per item. |

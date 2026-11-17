@@ -52,3 +52,17 @@ test('fits a 320 px wide phone without sideways scrolling', async ({ page }) => 
   );
   expect(overflows).toBe(false);
 });
+
+test('lists only the ten best when the job publishes more', async ({ page }) => {
+  const items = Array.from({ length: 12 }, (_, index) => ({
+    id: index + 1,
+    name: `Item ${index + 1}`,
+  }));
+  const body = JSON.stringify({ generatedAt: '2026-11-16T06:37:00Z', items });
+  await servePicks(page, { status: 200, body });
+  await page.goto('/');
+
+  const picks = page.getByRole('list', { name: 'Picks' }).getByRole('listitem');
+  await expect(picks).toHaveCount(10);
+  await expect(picks.last()).toHaveText('Item 10');
+});

@@ -3,15 +3,52 @@
  * (docs/spec.md §6). Fields are only ever added, so an older page keeps
  * working with a newer file.
  */
+import type { ItemScore } from './scoring.ts';
+import type { Settings } from './settings.ts';
+
 export interface PickItem {
   id: number;
   name: string;
 }
 
+/** One candidate as the job publishes it: the item plus its per-item numbers. */
+export interface PublishedItem extends PickItem, ItemScore {
+  /** File name of the item's icon on the Wiki. */
+  icon: string;
+  members: boolean;
+  /** Buy limit per 4 hours. */
+  limit: number;
+  /** Items traded over the last 24 hours, both sides. */
+  dailyVolume: number;
+}
+
+/** The settings a results file was scored with. */
+export type PublishedSettings = Pick<
+  Settings,
+  | 'buyStartHour'
+  | 'buyEndHour'
+  | 'sellStartHour'
+  | 'sellEndHour'
+  | 'nights'
+  | 'buyLevel'
+  | 'sellLevel'
+  | 'volumeShare'
+  | 'fallingPenalty'
+>;
+
 export interface PicksFile {
   /** When the job produced this file (ISO 8601, UTC). */
   generatedAt: string;
-  items: PickItem[];
+  /** Best first, for the default cash per slot. Older files have only id and name. */
+  items: (PickItem & Partial<PublishedItem>)[];
+  settings?: PublishedSettings;
+}
+
+/** An item's hourly history, loaded when the item is opened: `history/<id>.json`. */
+export interface HistoryFile {
+  id: number;
+  /** [hour start (seconds since 1970), sell-side price, buy-side price, sell-side volume, buy-side volume] */
+  points: [number, number | null, number | null, number, number][];
 }
 
 /** Checks a downloaded results file; throws with a plain reason if it's unusable. */

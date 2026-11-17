@@ -64,8 +64,8 @@ Because quantity depends on the cash and slots I choose on the phone, the job pu
 No database. Two kinds of data:
 
 **Published by the job (on the `data` branch, rebuilt every hour):**
-- `picks.json` – when it was generated, the settings used (windows, levels), and one entry per candidate item: id, name, icon, buy limit, suggested buy and sell price, tax per item, volume in my buy window, daily volume, the last 14 nights as hit/miss, trend, flags.
-- One small file per candidate with its 14-day hourly history, loaded only when I open that item (keeps the first load small).
+- `picks.json` – when it was generated, the settings used (windows, levels), and one entry per candidate item, best first for 50m in one slot: id, name, icon, buy limit, suggested buy and sell price, tax per item, volume in my buy window, daily volume, the last 14 nights as hit/miss, trend, flags.
+- One small file per candidate (`history/<id>.json`) with its hourly history for the measured nights, loaded only when I open that item (keeps the first load small).
 
 **On my phone (browser storage):**
 - Last cash choice and free slots.
