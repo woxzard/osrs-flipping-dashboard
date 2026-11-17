@@ -2,27 +2,32 @@
 
 Read this at the start of every session. Updated at the end of each batch and each release. How we work: `docs/workflow.md`.
 
-_Last updated: 2026-11-16._
+_Last updated: 2026-11-17._
 
 ## Where we are
-- **Released on `main`:** setup and foundation batches. The page shows "No picks yet" until the data job exists. `next` has nothing beyond `main` except doc updates.
-- The repo is public. The price API was checked live: the four endpoints in `docs/spec.md` §4 work as assumed.
-- **Vercel:** connected. A real build of a PR branch succeeded with `vercel.json` (2026-11-16).
-- **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (worked out from Vercel's naming of the PR branch preview; not opened yet, the owner should confirm it loads).
-- The owner pre-approved `owner-ok` for the three foundation PRs only. Later high-risk PRs wait for the owner again.
+- **Released on `main`:** setup and foundation batches. The page shows "No picks yet" until the data job is released.
+- **On `next`, not released:** the data job batch (PRs #7–#9): scoring rules, the job, the hourly workflow. The release PR (`next` → `main`, label `release`) is open **as a draft** because of the blocker below.
+- **Blocker before the release: one real run of the job.** The 2026-11-17 session could not reach `prices.runescape.wiki` (it was not running in the `osrs-flipping-dashboard` environment, and package installs were off), so the job has only run on the saved samples. In a session that can reach the site: `make setup`, then `NODE_USE_ENV_PROXY=1 node job/run.ts --out /tmp/out`, and check that the output is believable (about 300 candidates, sensible top ten, prices near the live ones). Then mark the release PR ready and tell the owner.
+- **Vercel:** connected. **Preview address for `next`:** expected to be https://osrs-flipping-dashboard-git-next-woxzard.vercel.app (not yet confirmed by the owner).
+- `owner-ok` was pre-approved by the owner for the two high-risk PRs of this batch only. Later high-risk PRs wait for the owner again.
 
 ## Next up
-- **Data job batch** (`docs/plan.md`). The plan was sent but is **not approved yet**: get the owner's OK and the answers below first.
+1. The real run above, then the owner tests and merges the release PR (merge commit).
+2. After the merge: start "Hourly data" by hand (Actions → Hourly data → Run workflow), check that the `data` branch gets `picks.json` and the released page lists real item names with a fresh update time. Then move this batch to "Done" in `docs/plan.md`.
+3. Then the **Dashboard batch** (`docs/plan.md`): send its plan first.
 - Start sessions for this repo in the **`osrs-flipping-dashboard`** cloud environment: it can reach the price site.
 
 ## Open questions for the owner
-1. **Should window hours be changeable on the phone in v1?** Recommendation: not yet. Keep 22:00–07:00 / 07:00–22:00 in the settings file and revisit in the Personal batch; changing them on the phone means the phone must redo the scoring from the raw history.
-2. **How many items get a history request each hour?** Recommendation: a cap of 300, from the most-traded items that have a buy limit and both prices (about 300 requests an hour, spaced out over a little more than a minute).
-3. **May Claude check the tax rules on the Wiki's own page?** That needs `oldschool.runescape.wiki` added to the `osrs-flipping-dashboard` cloud environment (the owner gets an approval prompt). Recommendation: yes; the tax rules in spec §5 are still unverified. Without it, build on the spec's numbers and flag them as unchecked.
-4. **Does the `next` preview address above open on your phone?**
+1. **Tax exempt list.** Rate (2%, rounded down), the 5m cap and the 50 gp floor agree with a web search, but the Wiki's own page could not be opened (needs `oldschool.runescape.wiki` allowed in the cloud environment). Only bonds are treated as exempt until that is checked; taxing an exempt item only makes its profit look smaller.
+2. **Does the `next` preview address above open on your phone?**
+
+Answered on 2026-11-17 (in `docs/decisions.md`): window hours stay in the settings file for v1; at most 300 history requests an hour.
 
 ## Good to know
 - If a PR's risk-gate run hangs "in progress" after labels are added, two runs are waiting on each other: cancel the stuck run and edit the PR description to start a fresh one. Adding the labels in one step right when the PR opens seems to trigger it.
+- "Merge when green" only acts when a check run finishes. A PR that was a draft while its checks ran needs a nudge after it is marked ready: edit the PR description (that reruns the risk gate).
+- After a squash merge the session branch on GitHub still points at the old commit: restart it with `git push --force-with-lease=<branch>:<old commit> origin <branch>`.
+- A session without package installs can still run the unit-test logic, the type check, Prettier and the job's sample run with the tools pre-installed on the machine, but not `make check` / `make build`; open the PR as a draft and let GitHub's checks be the test.
 
 ## Owner's to-dos
 See `TODO-PC.md`.

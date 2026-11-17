@@ -1,0 +1,59 @@
+# The hourly data job (docs/spec.md §7.1, docs/workflow.md).
+#
+# Every hour: fetch prices from the OSRS Wiki, score the flips and publish the
+# results as the `data` branch, which the page reads straight from GitHub.
+# Each run replaces the branch with one fresh commit, so history doesn't pile
+# up. If the job fails (the Wiki is down or returns nonsense) nothing is
+# pushed and the last good results stay.
+#
+# GitHub only runs schedules and hand-started runs from `main`. To start one by
+# hand: Actions → "Hourly data" → Run workflow.
+name: Hourly data
+
+on:
+  schedule:
+    # 7 minutes past every hour (UTC; the minute is all that matters). Off the
+    # hour on purpose: GitHub's schedules are busiest and latest at :00.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+# Never two runs at once; a late run waits for the one before it.
+concurrency:
+  group: hourly-data
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      # The job has no libraries to install: Node 22 runs its TypeScript directly.
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+
+      - name: Fetch prices and score the flips
+        # pipefail: a failed job must fail the step even though its output is piped on.
+        run: |
+          set -o pipefail
+          node job/run.ts --out "$RUNNER_TEMP/data" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish to the data branch
+        working-directory: ${{ runner.temp }}/data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test -s picks.json
+          echo "Generated every hour by the \"Hourly data\" workflow on main. Don't edit: each run replaces this branch." > README.md
+          git init --quiet --initial-branch=data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit --quiet --message "Picks $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force --quiet \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+          echo "Published $(ls history | wc -l) items to the \`data\` branch." >> "$GITHUB_STEP_SUMMARY"

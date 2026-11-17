@@ -12,6 +12,10 @@ These involve accounts or settings, so Claude can't do them. All can be done in 
 
 Nothing to switch on for merging: PRs into `next` are merged by the "Merge when green" workflow. `hold` stops a PR; `owner-ok` approves a high-risk one.
 
+## Data job release
+- [ ] 7. After merging the data job release PR: GitHub app or browser → the repo → Actions → "Hourly data" → Run workflow (branch `main`). A minute or two later the page should list real item names. After that it runs by itself every hour.
+- [ ] 8. Optional, for the tax check: add `oldschool.runescape.wiki` to the `osrs-flipping-dashboard` cloud environment's allowed sites.
+
 ## Good to know
 - New Claude sessions for this repo: pick the **osrs-flipping-dashboard** environment (already created). It lets Claude reach the OSRS price site.
 - If GitHub ever emails that scheduled workflows will be disabled for inactivity, tap the link to keep them on, and tell Claude.
