@@ -116,9 +116,13 @@ Icon + text, never colour alone:
 - A clear warning when the data is more than about 2 hours old (the outside timer or GitHub can fail or stall).
 
 ### 7.7 Personal (stored on the phone)
+- **Reached by a bottom bar:** Picks · My flips · Watchlist · Settings. The tab is in the address (`?view=flips`); each list keeps its own scroll position.
 - **"I'm flipping this"** tick: hides the item from the picks, with a "Hidden · Undo" toast. A **My flips** list shows what's ticked so I can untick when sold.
+  - The button is on each pick and on the item screen. A flip keeps the offer as it was when ticked (buy, sell, quantity, profit) and shows how long ago; **Sold** (on the row or the item) removes it with "Marked sold · Undo". Ticked items stay hidden until marked sold; the tab bar shows how many there are.
 - **Watchlist** (pinned items) and **blocklist** (never show).
-- **Settings:** buy and sell window hours.
+  - Watch / Watching on the item screen; the Watchlist tab also searches the ~290 items scored this hour (search kept in the address). Each watched item shows this hour's numbers for my cash, or why not (no profit at this cash, not in this hour's update). Watched picks are marked "Watching". Remove has Undo.
+  - "Never show this item" sits at the bottom of the item screen, apart from the other buttons, with "Blocked · Undo". Settings lists blocked items with **Show again** (with Undo). The picks say how many items they leave out ("Not shown: 1 item you're flipping, 1 blocked").
+- **Settings:** buy and sell window hours: bedtime (start buying), wake up (start selling), stop selling; saved as soon as changed, with Undo; hours that overlap the next night are refused. When they differ from the job's, the phone downloads every scored item's hourly history after each hourly update (about 3.7 MB) and scores them with the job's own rules (`shared/rescore.ts`); with the job's hours it gives the job's numbers exactly. Items the job couldn't score with its hours aren't in the files, so they can't appear with mine either.
 - Acceptance: toasts go away on their own (about 2.5 s; about 5 s with Undo); Undo instead of "Are you sure?"; everything survives closing the browser.
 
 ### 7.8 Rules for every screen
@@ -139,7 +143,7 @@ Each batch is usable or checkable on its own. Details in `docs/plan.md`.
 ## 10. Assumptions and known risks
 1. **Tax rules** (section 5, step 4): rate, rounding, cap, the 50 gp floor and the exempt list match the Wiki's Grand Exchange page as of 2026-11-17. Jagex changes the list now and then (last on 29 May 2025); a missing item only makes its profit look smaller.
 2. **The hourly start depends on an outside timer:** GitHub's own schedule never fired in this repo (2026-11-17), so cron-job.org starts the job. Its key expires (renew it before the date in `TODO-PC.md`), and the service can fail; cron-job.org emails on failures, and the freshness warning is the safety net. Runs always use `main`, so the job can't be tried from `next` except by starting it by hand.
-3. **Window hours as a phone setting:** the job scores with the default windows. Letting the phone use different hours means the page must redo the scoring from the hourly history. To decide in the data job batch plan (recommendation in `docs/status.md`).
+3. **Window hours as a phone setting** (decided in the Personal batch): the job scores with the default windows; the phone re-scores from the published hourly history when my hours differ, which costs about 3.7 MB per hourly update on the phone.
 4. **Thin items:** a few trades set the hourly price, so suggested prices are rougher. The row says so.
 5. **History length:** the API gives about 15 days of hourly data, just enough for 14 nights. Items with less get a flag.
 6. **Reading the results from GitHub** needs the repo to be public, and GitHub may serve a copy up to about 5 minutes old. Fine next to an hourly refresh.

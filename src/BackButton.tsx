@@ -1,8 +1,8 @@
-/** Back to the picks list, from an item. */
-export function BackButton({ onBack }: { onBack: () => void }) {
+/** Back to the list an item was opened from ("‹ Picks", "‹ My flips"). */
+export function BackButton({ label, onBack }: { label: string; onBack: () => void }) {
   return (
     <button type="button" className="back" onClick={onBack}>
-      <span aria-hidden="true">‹</span> Picks
+      <span aria-hidden="true">‹</span> {label}
     </button>
   );
 }
